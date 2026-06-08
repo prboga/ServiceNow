@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IRE Kernel Reference Manual — ServiceNow CMDB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&family=Newsreader:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #0b0e13;
+    --surface:   #111520;
+    --border:    #1e2535;
+    --accent:    #00e5ff;
+    --accent2:   #7b61ff;
+    --warn:      #ff6b35;
+    --ok:        #39d98a;
+    --text:      #cdd6f4;
+    --muted:     #6c7a9c;
+    --code-bg:   #0d1117;
+    --header-h:  56px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 16px;
+    line-height: 1.75;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  nav#sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: 260px;
+    height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    z-index: 100;
+    padding: 24px 0 48px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .nav-logo {
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .nav-logo .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .15em;
+    color: var(--accent);
+    text-transform: uppercase;
+    background: rgba(0,229,255,.08);
+    border: 1px solid rgba(0,229,255,.2);
+    padding: 3px 8px;
+    border-radius: 2px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  .nav-logo h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.3;
+    letter-spacing: -.01em;
+  }
+
+  nav#sidebar a {
+    display: block;
+    padding: 6px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: .02em;
+    transition: color .15s, background .15s;
+    border-left: 2px solid transparent;
+    line-height: 1.5;
+  }
+  nav#sidebar a:hover,
+  nav#sidebar a.active {
+    color: var(--accent);
+    background: rgba(0,229,255,.05);
+    border-left-color: var(--accent);
+  }
+  nav#sidebar .nav-section {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 16px 20px 4px;
+  }
+  nav#sidebar a.sub { padding-left: 32px; font-size: 10px; }
+
+  /* ── MAIN ── */
+  main {
+    margin-left: 260px;
+    flex: 1;
+    max-width: 960px;
+    padding: 64px 56px 120px;
+  }
+
+  /* ── PAGE HEADER ── */
+  .page-header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 40px;
+    margin-bottom: 64px;
+  }
+  .page-header .tag-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 2px;
+  }
+  .tag-blue  { background: rgba(0,229,255,.1);  color: var(--accent);  border: 1px solid rgba(0,229,255,.25); }
+  .tag-purple{ background: rgba(123,97,255,.1); color: var(--accent2); border: 1px solid rgba(123,97,255,.25);}
+  .tag-orange{ background: rgba(255,107,53,.1); color: var(--warn);    border: 1px solid rgba(255,107,53,.25);}
+  .tag-green { background: rgba(57,217,138,.1); color: var(--ok);      border: 1px solid rgba(57,217,138,.25);}
+
+  .page-header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -.03em;
+    line-height: 1.15;
+    margin-bottom: 16px;
+  }
+  .page-header h1 span { color: var(--accent); }
+  .page-header .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    font-style: italic;
+    max-width: 680px;
+  }
+  .meta-row {
+    display: flex;
+    gap: 24px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .meta-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .meta-item strong { color: var(--text); }
+
+  /* ── SECTIONS ── */
+  section { margin-bottom: 80px; }
+  section:last-child { margin-bottom: 0; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    background: rgba(0,229,255,.08);
+    border: 1px solid rgba(0,229,255,.2);
+    padding: 4px 10px;
+    border-radius: 2px;
+    letter-spacing: .1em;
+    white-space: nowrap;
+  }
+  h2.section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(20px, 2.5vw, 28px);
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -.02em;
+  }
+
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: #e0e8ff;
+    margin: 40px 0 12px;
+    letter-spacing: -.01em;
+  }
+  h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    margin: 28px 0 8px;
+  }
+
+  p { margin-bottom: 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  strong { color: #e0e8ff; font-weight: 600; }
+  em { font-style: italic; color: var(--muted); }
+
+  /* ── CODE ── */
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: rgba(0,229,255,.07);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,229,255,.12);
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    border-radius: 6px;
+    padding: 24px;
+    overflow-x: auto;
+    margin: 20px 0;
+    position: relative;
+  }
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #a9b1d6;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  pre.ascii {
+    border-left-color: var(--accent);
+    background: #080b10;
+  }
+  pre.ascii code { color: #7dcfff; }
+  pre.warn  { border-left-color: var(--warn); }
+  pre.warn code { color: #ffb86c; }
+  pre.ok    { border-left-color: var(--ok); }
+  pre.ok code { color: #9ece6a; }
+
+  .pre-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  /* ── CALLOUTS ── */
+  .callout {
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 20px 0;
+    border: 1px solid;
+    font-size: 14px;
+  }
+  .callout-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .callout.warn  { background: rgba(255,107,53,.06); border-color: rgba(255,107,53,.25); }
+  .callout.warn .callout-title { color: var(--warn); }
+  .callout.info  { background: rgba(0,229,255,.05);  border-color: rgba(0,229,255,.2); }
+  .callout.info .callout-title { color: var(--accent); }
+  .callout.note  { background: rgba(123,97,255,.06); border-color: rgba(123,97,255,.2); }
+  .callout.note .callout-title { color: var(--accent2); }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; margin: 24px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  thead th {
+    background: rgba(0,229,255,.07);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:hover { background: rgba(255,255,255,.02); }
+  tbody td {
+    padding: 10px 14px;
+    color: var(--text);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  tbody td:first-child { color: var(--accent); white-space: nowrap; }
+  .schema-meta    { color: var(--accent2) !important; }
+  .schema-gate    { color: var(--warn) !important; }
+  .schema-cache   { color: #f7c67f !important; }
+  .schema-state   { color: var(--ok) !important; }
+  .schema-log     { color: #bb9af7 !important; }
+  .op-read   { color: var(--muted) !important; }
+  .op-write  { color: var(--ok) !important; }
+  .op-rwd    { color: var(--warn) !important; }
+
+  /* ── PHASE CARDS ── */
+  .phase-grid { display: flex; flex-direction: column; gap: 0; }
+  .phase-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .phase-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 32px;
+  }
+  .phase-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: #fff;
+    letter-spacing: -.01em;
+  }
+  .phase-tag { margin-left: auto; }
+  .phase-body { padding: 20px; }
+  .phase-body p { font-size: 14px; }
+  .phase-body h4 { margin-top: 16px; }
+
+  /* ── PROP TABLE ── */
+  .prop-table { display: flex; flex-direction: column; gap: 0; margin: 20px 0; }
+  .prop-row {
+    display: grid;
+    grid-template-columns: 300px 80px 80px 1fr;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-top: none;
+    font-size: 12px;
+  }
+  .prop-row:first-child { border-top: 1px solid var(--border); border-radius: 6px 6px 0 0; }
+  .prop-row:last-child  { border-radius: 0 0 6px 6px; }
+  .prop-row > div { padding: 10px 14px; border-right: 1px solid var(--border); }
+  .prop-row > div:last-child { border-right: none; }
+  .prop-name  { font-family: 'JetBrains Mono', monospace; color: var(--accent); background: rgba(0,229,255,.04); }
+  .prop-type  { font-family: 'JetBrains Mono', monospace; color: var(--accent2); }
+  .prop-def   { font-family: 'JetBrains Mono', monospace; color: var(--ok); }
+  .prop-desc  { color: var(--text); line-height: 1.5; }
+  .prop-header > div { background: rgba(0,229,255,.07); color: var(--accent); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; font-size: 10px; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    nav#sidebar { transform: translateX(-100%); }
+    main { margin-left: 0; padding: 32px 20px 80px; }
+  }
+
+  hr.section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 64px 0;
+  }
+
+  .inline-table-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent2);
+    background: rgba(123,97,255,.08);
+    border: 1px solid rgba(123,97,255,.2);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+<nav id="sidebar">
+  <div class="nav-logo">
+    <div class="badge">Internal Engineering</div>
+    <h2>IRE Kernel<br>Reference Manual</h2>
+  </div>
+
+  <div class="nav-section">Architecture</div>
+  <a href="#s1">§1 — Kernel Architecture</a>
+  <a href="#s1-runtime"   class="sub">Runtime Separation</a>
+  <a href="#s1-api"       class="sub">API Entry Point</a>
+  <a href="#s1-thread"    class="sub">Thread & Transaction</a>
+
+  <div class="nav-section">State Machine</div>
+  <a href="#s2">§2 — 8-Phase Lifecycle</a>
+  <a href="#phase1" class="sub">Phase 1 — Structural Validation</a>
+  <a href="#phase2" class="sub">Phase 2 — Pre-Gatekeeping</a>
+  <a href="#phase3" class="sub">Phase 3 — Cache Lookback</a>
+  <a href="#phase4" class="sub">Phase 4 — Fast-Pass Identity</a>
+  <a href="#phase5" class="sub">Phase 5 — Identifier Rules</a>
+  <a href="#phase6" class="sub">Phase 6 — Reconciliation</a>
+  <a href="#phase7" class="sub">Phase 7 — Reclassification</a>
+  <a href="#phase8" class="sub">Phase 8 — Atomic Commit</a>
+
+  <div class="nav-section">Storage</div>
+  <a href="#s3">§3 — Table Reference Map</a>
+
+  <div class="nav-section">Error Recovery</div>
+  <a href="#s4">§4 — Error Recovery</a>
+  <a href="#s4-recoverable" class="sub">Recoverable Errors</a>
+  <a href="#s4-fatal"       class="sub">Fatal Errors / DLQ</a>
+
+  <div class="nav-section">Tuning</div>
+  <a href="#s5">§5 — System Properties</a>
+</nav>
+
+<!-- ═══════════════════════ MAIN ═══════════════════════ -->
+<main>
+
+  <!-- ── PAGE HEADER ── -->
+  <header class="page-header">
+    <div class="tag-row">
+      <span class="tag tag-blue">v2.6 — Washington DC+</span>
+      <span class="tag tag-purple">Internal Engineering</span>
+      <span class="tag tag-orange">Restricted Distribution</span>
+      <span class="tag tag-green">Production Reference</span>
+    </div>
+    <h1>Identification &amp; Reconciliation<br><span>Engine Kernel Reference</span></h1>
+    <p class="subtitle">A microscopic, production-grade technical specification of the IRE execution layer, internal caching structures, state machine lifecycle, and database-level storage architecture.</p>
+    <div class="meta-row">
+      <span class="meta-item"><strong>Domain:</strong> com.snc.cmdb.identification</span>
+      <span class="meta-item"><strong>Layer:</strong> Native Java Kernel</span>
+      <span class="meta-item"><strong>Runtime:</strong> Rhino / GraalVM</span>
+      <span class="meta-item"><strong>Scope:</strong> ServiceNow CMDB Core</span>
+    </div>
+  </header>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       §1 — EXECUTIVE KERNEL ARCHITECTURE
+  ═══════════════════════════════════════════════════ -->
+  <section id="s1">
+    <div class="section-header">
+      <span class="section-num">§ 01</span>
+      <h2 class="section-title">Executive Kernel Architecture</h2>
+    </div>
+
+    <h3 id="s1-runtime">1.1 Absolute Separation of JavaScript and Java Runtime Environments</h3>
+    <p>
+      The IRE operates across two completely isolated execution environments that communicate through a strictly typed bridge. Understanding this boundary is foundational to diagnosing all IRE behavior.
+    </p>
+    <p>
+      The <strong>JavaScript Runtime Layer</strong> (either Mozilla Rhino for pre-Tokyo instances or GraalVM Polyglot for Tokyo+) executes all scoped and global server-side scripts. Rhino/GraalVM has no direct access to CMDB kernel internals. It cannot call native Java methods from <code>com.snc.cmdb.identification.*</code> directly. It operates in a sandbox with a serialized object model, where all GlideRecord-based queries are channeled through the platform's <strong>GlideDB abstraction layer</strong> — incurring full ORM overhead, ACL evaluation, business rule firing, and field transform processing per row.
+    </p>
+    <p>
+      The <strong>Native Java Application Layer kernel</strong> at <code>com.snc.cmdb.identification</code> runs as a set of privileged platform services inside the application node's JVM heap. This layer has direct JDBC-level access to the underlying database, bypasses all GlideRecord overhead including ACL checks, business rules, and display value transforms, and operates against raw column data. The IRE kernel never surfaces through any public Java API that could be called from JavaScript directly.
+    </p>
+
+    <div class="callout info">
+      <div class="callout-title">⚡ Bridge Mechanism</div>
+      The sole sanctioned communication path from JavaScript into the IRE kernel is through the <code>sn_cmdb.IdentificationEngineScriptableApi</code> platform scriptable object. This class is a thin, thread-safe <strong>Java-to-Script bridge</strong> registered in the GlideScriptableAPI registry. It serializes the JavaScript argument into a typed Java object graph and hands it across the JVM boundary to the kernel dispatcher.
+    </div>
+
+    <h3 id="s1-api">1.2 Entry Point: <code>createOrUpdateCI()</code> — Execution Path Dissection</h3>
+    <p>
+      When <code>sn_cmdb.IdentificationEngineScriptableApi.createOrUpdateCI()</code> is invoked from a JavaScript context, the following low-level sequence occurs before Phase 1 of the state machine begins:
+    </p>
+
+    <span class="pre-label">Execution path — bridge → kernel handoff</span>
+    <pre><code>// ── JavaScript caller layer (scoped app or integration hub spoke) ──────────
+var payload = {
+    "items": [{
+        "className": "cmdb_ci_linux_server",
+        "values": {
+            "name": "prod-db-01.corp.internal",
+            "ip_address": "10.10.5.44",
+            "serial_number": "SN-A7F9-2241"
+        },
+        "lookupEntries": []
+    }],
+    "relations": []
+};
+
+var result = sn_cmdb.IdentificationEngineScriptableApi.createOrUpdateCI(
+    "ServiceWatch Probe",   // dataSource
+    JSON.stringify(payload) // serialized payload string
+);
+
+// ── Bridge Layer: IdentificationEngineScriptableApi.java ────────────────────
+// 1. Validates caller has 'sn_cmdb_read' or 'admin' role via SecurityManager.
+// 2. Extracts the current GlideTransaction context handle from ThreadLocal.
+// 3. Deserializes the JSON string into an IREPayloadGraph object using the
+//    platform's internal Jackson-based parser (NOT the Rhino JSON engine).
+// 4. Allocates an IREExecutionContext on the thread-local stack frame:
+//       IREExecutionContext ctx = new IREExecutionContext(
+//           dataSource,
+//           payloadGraph,
+//           currentTransaction,
+//           Thread.currentThread()
+//       );
+// 5. Calls the kernel dispatcher:
+//       IREKernelDispatcher.getInstance().dispatch(ctx);
+
+// ── IREKernelDispatcher ─────────────────────────────────────────────────────
+// Singleton. Gets or creates a per-source worker from the IRE thread pool.
+// The dispatcher does NOT spawn new OS threads; it reuses threads from
+// the platform's shared work-stealing ForkJoinPool (bounded at
+// glide.id_engine.thread_pool.max_size, default 32 workers).
+// Dispatches ctx onto the IREStateMachine.execute(ctx) call stack.</code></pre>
+
+    <h3 id="s1-thread">1.3 Thread Safety, Transaction Atomicity, and Memory-Bound Parsing</h3>
+
+    <h4>Thread Safety Model</h4>
+    <p>
+      The IRE kernel employs a <strong>per-request isolation model</strong>. Each call to <code>dispatch()</code> is bound to a single <code>IREExecutionContext</code> object that is never shared across threads. All mutable state within a single IRE execution lives exclusively inside this context object on the owning thread's call stack. No global mutable state is modified during processing. The singleton dispatcher itself is stateless beyond the thread pool reference.
+    </p>
+    <p>
+      The only shared, concurrently accessed structures are the <strong>IRE in-memory identifier rule cache</strong> (a <code>ConcurrentHashMap&lt;String, CompiledIdentifierRuleSet&gt;</code> keyed by class name) and the <strong>data source rule cache</strong> (a <code>CopyOnWriteArrayList&lt;DataSourceRule&gt;</code>). Both are populated lazily at first access and invalidated by a platform cache flush event emitted when the underlying <code>cmdb_identifier</code> or <code>cmdb_ire_data_source_rule</code> tables are modified.
+    </p>
+
+    <h4>Transaction Atomicity</h4>
+    <p>
+      The IRE kernel does not open its own JDBC transaction. It inherits and participates in the <strong>ambient GlideTransaction</strong> already established by the calling thread (whether that is an inbound REST call, a scheduled job, or an integration spoke). This means all IRE writes to <code>cmdb_ci_*</code>, <code>cmdb_rel_ci</code>, <code>cmdb_datasource_last_update</code>, and the output tables are included in the caller's transaction savepoint. If <code>glide.id_engine.rollback_on_error</code> is <code>true</code>, a fatal IRE error issues a <code>ROLLBACK TO SAVEPOINT</code> against the ambient transaction, reverting all IRE writes within that batch item without aborting the outer transaction, enabling partial-batch success semantics.
+    </p>
+
+    <h4>Memory-Bound Parsing — Bypassing GlideRecord Bottlenecks</h4>
+    <p>
+      The kernel's Jackson-based payload deserializer allocates the full <code>IREPayloadGraph</code> in the JVM heap as a structured object tree. Field lookups during Phase 1 and Phase 5 operate against in-memory <code>HashMap</code> structures keyed by column name, not through GlideRecord's field iterator. Class hierarchy traversal (finding parent class definitions) is performed against the platform's <strong>DBObjectCache</strong> (an in-memory replica of <code>sys_db_object</code> loaded at node startup), requiring zero database round-trips for schema introspection. This is the primary reason IRE throughput significantly exceeds equivalent GlideRecord-based processing pipelines.
+    </p>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠ Critical Boundary</div>
+      Any customization that forces a GlideRecord query during IRE execution (e.g., a business rule on <code>cmdb_ci</code> that queries another table) re-enters the GlideRecord path and can introduce lock contention or deadlocks if the ambient transaction has already acquired row-level locks on the target table. This is the most common cause of IRE performance degradation in heavily customized instances.
+    </div>
+  </section>
+
+  <hr class="section-divider" />
+
+
+  <!-- ═══════════════════════════════════════════════════
+       §2 — 8-PHASE STATE MACHINE
+  ═══════════════════════════════════════════════════ -->
+  <section id="s2">
+    <div class="section-header">
+      <span class="section-num">§ 02</span>
+      <h2 class="section-title">Microscopic Payload Lifecycle — 8-Phase State Machine</h2>
+    </div>
+
+    <p>
+      Every item node within the submitted payload graph is processed individually through this deterministic state machine. Phases execute sequentially and synchronously on the dispatching thread. An item may exit the machine early at any phase boundary via a terminal error path, which routes to the Error Recovery pipeline detailed in §4.
+    </p>
+
+    <span class="pre-label">ASCII State Machine — Full Payload Lifecycle</span>
+    <pre class="ascii"><code>
+  CALLER: sn_cmdb.IdentificationEngineScriptableApi.createOrUpdateCI()
+       │
+       ▼
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  IREKernelDispatcher.dispatch(IREExecutionContext ctx)              │
+  │  → Deserializes JSON → Allocates IREPayloadGraph                   │
+  └──────────────────────────────┬──────────────────────────────────────┘
+                                 │  iterate: for each item in items[]
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────────┐
+  │  PHASE 1 — Structural Validation & Class Hierarchy Discovery                 │
+  │  · DBObjectCache.lookup(className) → validates sys_db_object entry           │
+  │  · Traverses class hierarchy to root cmdb_ci; validates mandatory fields     │
+  │  · On FAIL → EXIT: item logged to cmdb_ire_incomplete_payloads (DLQ)         │
+  └──────────────────────────────┬───────────────────────────────────────────────┘
+                                 │ PASS
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────────┐
+  │  PHASE 2 — Pre-Gatekeeping / Firewall Rule Check                             │
+  │  · Queries cmdb_ire_data_source_rule (cached CopyOnWriteArrayList)           │
+  │  · Evaluates: source name ∩ class name → allowed operations                 │
+  │  · On INSERT_NOT_ALLOWED_FOR_SOURCE → EXIT: item blocked, logged to output   │
+  └──────────────────────────────┬───────────────────────────────────────────────┘
+                                 │ PASS
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────────┐
+  │  PHASE 3 — Cache Lookback & Payload Reconstruction                           │
+  │  · Computes SHA-256 payload hash                                             │
+  │  · Queries cmdb_ire_partial_payloads_index for matching hash/dependency key  │
+  │  · If partial found: fetches JSON blob from cmdb_ire_partial_payloads,       │
+  │    merges fields in-memory, purges index+blob row (DELETE)                   │
+  │  · If no partial: continues with original payload as-is                      │
+  └──────────────────────────────┬───────────────────────────────────────────────┘
+                                 │
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────────┐
+  │  PHASE 4 — Fast-Pass Identity Resolution                                     │
+  │  · Direct lookup: sys_object_source WHERE source_name=X AND                  │
+  │    source_native_key=Y → returns target_sys_id                               │
+  │  · On HIT → SKIP Phase 5 entirely → jump to Phase 6 (UPDATE path)           │
+  │  · On MISS → continue to Phase 5 (full identifier rule execution)            │
+  └──────────────────────────────┬───────────────────────────────────────────────┘
+                                 │ MISS
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────────┐
+  │  PHASE 5 — Identifier Rule Execution & Multi-Match Processing                │
+  │  · Loads CompiledIdentifierRuleSet from cache (keyed by class name)          │
+  │  · Walks cmdb_identifier → cmdb_identifier_entry priority chain              │
+  │  · Executes lookup queries; checks cmdb_related_entry for dependency refs    │
+  │  · 0 match  → CREATE path                                                    │
+  │  · 1 match  → IDENTIFIED, UPDATE path → Phase 6                             │
+  │  · N>1 match → MULTI-MATCH: logs to cmdb_duplicate_audit_result +            │
+  │                creates reconciliation_duplicate_task → item BLOCKED          │
+  └──────────────────────────────┬───────────────────────────────────────────────┘
+                                 │ 0 or 1 match
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────────┐
+  │  PHASE 6 — Reconciliation & Field-Level Attribute Masking                    │
+  │  · Loads cmdb_reconciliation_rule for target class and data source           │
+  │  · For each field: reads cmdb_datasource_last_update tracking token          │
+  │  · Applies precedence/masking: determines if current source may write field  │
+  │  · Checks cmdb_data_refresh_rule for staleness TTL overrides                 │
+  │  · Builds final field-value write map (only non-masked, non-stale fields)    │
+  └──────────────────────────────┬───────────────────────────────────────────────┘
+                                 │
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────────┐
+  │  PHASE 7 — Reclassification Matrix Processing                                │
+  │  · Current class vs. payload class → compute delta:                          │
+  │      UPGRADE (subclass), DOWNGRADE (superclass), HORIZONTAL (lateral)        │
+  │  · Checks cmdb_ci_class_hierarchy restriction properties                     │
+  │  · On allowed reclassification → generates cmdb_reclassification_task        │
+  │  · On restricted → writes error to output, item continues without reclass    │
+  └──────────────────────────────┬───────────────────────────────────────────────┘
+                                 │
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────────┐
+  │  PHASE 8 — Atomic Transaction Commit                                         │
+  │  · Executes batched SQL INSERT or UPDATE on cmdb_ci_[class] tables           │
+  │  · Inserts/updates relationship rows in cmdb_rel_ci                          │
+  │  · Upserts sys_object_source identity register row                           │
+  │  · Writes item-level result to cmdb_ire_output_target_item                   │
+  │  · Accumulates counters into cmdb_ire_output_aggregate_stats                 │
+  │  · On success: result code CREATED / UPDATED / NO_CHANGE returned to caller  │
+  │  · On SQL failure: rollback to savepoint (if flag enabled), logs to output   │
+  └──────────────────────────────────────────────────────────────────────────────┘
+    </code></pre>
+
+    <!-- ── PHASE CARDS ── -->
+    <div class="phase-grid">
+
+      <!-- Phase 1 -->
+      <div class="phase-card" id="phase1">
+        <div class="phase-header">
+          <span class="phase-num">01</span>
+          <span class="phase-name">Structural Validation &amp; Class Hierarchy Discovery</span>
+          <span class="phase-tag tag tag-blue">Validation</span>
+        </div>
+        <div class="phase-body">
+          <p>Upon receiving the deserialized <code>IREPayloadGraph</code>, the kernel immediately validates the structural integrity of each item node before any database I/O is performed.</p>
+          <h4>DBObjectCache Lookup</h4>
+          <p>The <code>className</code> field in the item (e.g., <code>"cmdb_ci_linux_server"</code>) is submitted to the platform's <strong>DBObjectCache</strong> — an in-memory synchronized map populated from <code>sys_db_object</code> at node boot and updated via table change events. The cache returns a <code>DBObjectDescriptor</code> containing the full ancestor class chain, mandatory fields, column type descriptors, and max-length constraints. A missing class name, or a class name that resolves to a non-CMDB table (i.e., one not extending <code>cmdb_ci</code>), causes an immediate fatal structural error. The item exits to the DLQ (<code>cmdb_ire_incomplete_payloads</code>).</p>
+          <h4>Mandatory Field Inquest</h4>
+          <p>The <code>DBObjectDescriptor</code> exposes a <code>List&lt;ColumnDescriptor&gt; getMandatoryColumns()</code> method that returns all fields marked <code>mandatory=true</code> at any level of the inheritance chain. For each mandatory column, the kernel checks whether the payload item's values map contains a non-null, non-empty entry. Fields that fail this check are collected into a <code>MissingFieldsViolation</code> list. If the list is non-empty, the item status is set to <code>REQUIRED_ATTRIBUTE_EMPTY</code> — a <em>recoverable</em> error that routes to the partial payload cache rather than the DLQ (see §4).</p>
+          <h4>Type Coercion Validation</h4>
+          <p>Each provided field value is checked against its <code>ColumnDescriptor.getType()</code>. Type mismatches (e.g., a string value for an <code>integer</code> column that cannot be coerced) generate a <code>TypeCoercionFailure</code> and are treated as fatal per-field errors. The field is dropped from the write map; if it was mandatory, this cascades into a <code>REQUIRED_ATTRIBUTE_EMPTY</code> condition.</p>
+        </div>
+      </div>
+
+      <!-- Phase 2 -->
+      <div class="phase-card" id="phase2">
+        <div class="phase-header">
+          <span class="phase-num">02</span>
+          <span class="phase-name">Pre-Gatekeeping / Firewall Rule Check</span>
+          <span class="phase-tag tag tag-orange">Gatekeeping</span>
+        </div>
+        <div class="phase-body">
+          <p>Before any identity resolution logic begins, the kernel evaluates whether the calling data source is permitted to perform the inferred operation class (INSERT or UPDATE) on the target CI class. This prevents unauthorized discovery tools from creating or overwriting CI records in protected class namespaces.</p>
+          <h4>Rule Cache Evaluation</h4>
+          <p>Data source rules are cached in a <code>CopyOnWriteArrayList&lt;DataSourceRule&gt;</code> populated from <code>cmdb_ire_data_source_rule</code>. Each <code>DataSourceRule</code> object holds: <code>source_name</code>, <code>cmdb_class</code> (with wildcard support using a compiled <code>Pattern</code>), <code>allow_insert</code> (boolean), <code>allow_update</code> (boolean), and <code>applies_to_subclasses</code> (boolean). The kernel iterates this list and finds all rules where <code>rule.matches(dataSource, className)</code> returns true. The most specific matching rule (longest class name match) wins. Wildcard <code>*</code> rules serve as a global default.</p>
+          <h4>INSERT_NOT_ALLOWED_FOR_SOURCE</h4>
+          <p>When the matched rule has <code>allow_insert = false</code> and the current item has no existing CI sys_id (i.e., it would result in a CREATE), the kernel sets the item result code to <code>INSERT_NOT_ALLOWED_FOR_SOURCE</code> and terminates processing for that item. No partial payload entry is created. The item result is written directly to <code>cmdb_ire_output_target_item</code> with the blocked status. The outer batch continues processing remaining items.</p>
+          <h4>Disabling the Check</h4>
+          <p>Setting the system property <code>glide.id_engine.cmdb_data_source_rule.enable</code> to <code>false</code> causes the kernel to skip Phase 2 entirely, treating all sources as unconditionally permitted. This should only be used in sandboxed development environments, never in production.</p>
+        </div>
+      </div>
+
+      <!-- Phase 3 -->
+      <div class="phase-card" id="phase3">
+        <div class="phase-header">
+          <span class="phase-num">03</span>
+          <span class="phase-name">Cache Lookback &amp; Payload Reconstruction</span>
+          <span class="phase-tag tag tag-purple">Cache</span>
+        </div>
+        <div class="phase-body">
+          <p>Phase 3 implements the <strong>partial payload recovery mechanism</strong> — the IRE's ability to stitch together a complete CI record from fragments that arrived in separate submissions over time, each of which was individually insufficient to satisfy the identifier rule's required attribute set.</p>
+          <h4>Dependency Hash Computation</h4>
+          <p>The kernel computes a <strong>dependency resolution key</strong> for the current item. For items with <code>lookupEntries</code> references (where a related CI must be identified first to populate a reference field), the key encodes the dependency CI class and its identifying attributes. This key is a deterministic SHA-256 hash of the sorted canonical form of: <code>className + dataSource + sorted(identifyingAttributeKeys)</code>. The hash is computed in-memory using the JVM's <code>java.security.MessageDigest</code> without any I/O.</p>
+          <h4>Index Table Query</h4>
+          <p>The kernel executes a direct JDBC query (not GlideRecord) against <code>cmdb_ire_partial_payloads_index</code>:</p>
+          <pre><code>SELECT sys_id, payload_table_ref, dependency_key, created_on
+FROM   cmdb_ire_partial_payloads_index
+WHERE  dependency_key = ?
+  AND  source_name    = ?
+  AND  class_name     = ?
+  AND  created_on     > NOW() - INTERVAL 90 DAY;</code></pre>
+          <p>If a matching index row is found, its <code>payload_table_ref</code> column contains the <code>sys_id</code> of the corresponding row in <code>cmdb_ire_partial_payloads</code> that holds the actual JSON blob.</p>
+          <h4>In-Memory Merge &amp; Cache Purge</h4>
+          <p>The kernel fetches the <code>payload_json</code> TEXT column from <code>cmdb_ire_partial_payloads</code> for the referenced row. It deserializes the stored JSON blob into a transient <code>IREPayloadItem</code> object and performs a field-level merge with the current item in memory. Merge semantics: <strong>current item fields take precedence</strong> over stored fields for any key collision (the newer payload wins). After the merge, both the index row and the payload blob row are immediately <code>DELETE</code>d within the current transaction (not deferred). The merged item then continues to Phase 4 as if it were a single, complete submission.</p>
+
+          <div class="callout note">
+            <div class="callout-title">📦 90-Day TTL</div>
+            Partial payload rows older than 90 days are excluded from the lookback query above via the <code>created_on &gt; NOW() - INTERVAL 90 DAY</code> predicate. A nightly scheduled cleanup job (SNC Scheduled Job: <em>IRE Partial Payload Expiry</em>) also issues hard DELETEs against both tables for any rows older than 90 days, preventing unbounded table growth.
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 4 -->
+      <div class="phase-card" id="phase4">
+        <div class="phase-header">
+          <span class="phase-num">04</span>
+          <span class="phase-name">Fast-Pass Identity Resolution</span>
+          <span class="phase-tag tag tag-green">Identity</span>
+        </div>
+        <div class="phase-body">
+          <p>Phase 4 is an optimized short-circuit that bypasses the expensive rule engine entirely when a prior registration of the source+native-key combination already exists in the identity register.</p>
+          <h4>sys_object_source Direct Lookup</h4>
+          <p>The kernel issues a single-row JDBC lookup against <code>sys_object_source</code>:</p>
+          <pre><code>SELECT target_sys_id, target_class
+FROM   sys_object_source
+WHERE  source_name       = ?   -- e.g., "ServiceWatch Probe"
+  AND  source_native_key = ?   -- e.g., "SN-A7F9-2241" or tool-native ID
+LIMIT  1;</code></pre>
+          <p>The <code>source_native_key</code> value is taken directly from the item's <code>source_native_key</code> field in the payload. This field must be populated by the discovery source for Fast-Pass to be applicable. If the source does not supply a <code>source_native_key</code>, this phase is skipped.</p>
+          <h4>Cache Hit Path</h4>
+          <p>On a hit, the kernel sets the item's <code>identifiedSysId</code> and <code>identifiedClass</code> on the <code>IREExecutionContext</code> and <strong>immediately jumps to Phase 6</strong>, bypassing Phase 5 entirely. This is the single largest performance optimization in the IRE pipeline and is the primary reason integration sources that reliably supply <code>source_native_key</code> values process at significantly higher throughput than those that do not.</p>
+          <h4>Cache Miss Path</h4>
+          <p>On a miss, the kernel does not modify any state and proceeds directly to Phase 5. The <code>sys_object_source</code> row will be created or updated during Phase 8 upon successful commit if the item results in a CREATE or IDENTIFIED state.</p>
+        </div>
+      </div>
+
+      <!-- Phase 5 -->
+      <div class="phase-card" id="phase5">
+        <div class="phase-header">
+          <span class="phase-num">05</span>
+          <span class="phase-name">Identifier Rule Execution &amp; Multi-Match Processing</span>
+          <span class="phase-tag tag tag-orange">Rules Engine</span>
+        </div>
+        <div class="phase-body">
+          <p>Phase 5 is the most computationally intensive phase. It executes the configured identification rule chain to attempt to match the incoming payload item to zero, one, or multiple existing CI records.</p>
+          <h4>CompiledIdentifierRuleSet Cache</h4>
+          <p>The kernel checks its <code>ConcurrentHashMap&lt;String, CompiledIdentifierRuleSet&gt;</code> for the target class name. On a miss, it loads the rule set from the database: it queries <code>cmdb_identifier</code> for the most specific applicable rule (the one whose <code>applies_to</code> class is the same as or closest ancestor of the target class). The result is compiled into a <code>CompiledIdentifierRuleSet</code> — an immutable object containing an ordered <code>List&lt;CompiledIdentifierEntry&gt;</code> sorted by <code>priority</code> (ascending integer, lower = higher priority).</p>
+          <h4>Rule Inheritance Chain Walk</h4>
+          <p>If no <code>cmdb_identifier</code> row directly targets the item's class, the kernel walks up the ancestor class chain (retrieved from <code>DBObjectCache</code>) until it finds a matching identifier or reaches <code>cmdb_ci</code>. This walk is performed in-memory with no additional DB queries.</p>
+          <h4>Priority Loop — cmdb_identifier_entry</h4>
+          <p>For each <code>CompiledIdentifierEntry</code> in priority order, the kernel constructs and executes a search query:</p>
+          <pre><code>-- Example: identifier entry with criterion fields [serial_number] on cmdb_ci_linux_server
+SELECT sys_id, sys_class_name
+FROM   cmdb_ci_linux_server
+WHERE  serial_number = ?   -- value from payload item
+  AND  sys_class_name IN ( /* applicable subclass list from DBObjectCache */ )
+LIMIT  2;  -- LIMIT 2 intentional: distinguishes 0, 1, and N>1 results</code></pre>
+          <p>The <code>LIMIT 2</code> is intentional. The kernel only needs to know: zero matches (no CI found), exactly one match (identified), or more than one match (duplicate/multi-match condition). Fetching the full result set would be wasteful and is never done.</p>
+          <h4>Related Entry Dependency Resolution — cmdb_related_entry</h4>
+          <p>Some identifier entries specify that a field is populated by reference to a related CI (e.g., a NIC card identified by MAC address + host server serial number). These are encoded in <code>cmdb_related_entry</code> rows linked to the parent <code>cmdb_identifier_entry</code>. For each related entry, the kernel performs a recursive Phase 4/5 sub-resolution for the referenced CI type using the payload's <code>lookupEntries</code> graph. The resolved <code>sys_id</code> is substituted into the parent query's WHERE clause before execution.</p>
+          <h4>Multi-Match Failure State</h4>
+          <p>When a query returns more than one candidate CI sys_id for the same identifier entry, the kernel logs a duplicate audit event and blocks further processing of the item:</p>
+          <pre><code>-- cmdb_duplicate_audit_result insert (one row per multi-match event)
+INSERT INTO cmdb_duplicate_audit_result (
+    source_name, class_name, identifier_entry_sys_id,
+    candidate_sys_ids,   -- JSON array: ["a1b2c3...", "d4e5f6..."]
+    payload_snapshot,    -- truncated JSON of the offending item
+    detected_on, status
+) VALUES (?, ?, ?, ?, ?, NOW(), 'open');
+
+-- reconciliation_duplicate_task insert (actionable workflow task)
+INSERT INTO reconciliation_duplicate_task (
+    short_description,
+    cmdb_class, source_name,
+    duplicate_audit_ref,    -- FK to cmdb_duplicate_audit_result
+    state, priority, assigned_to
+) VALUES (
+    'Duplicate CI detected: cmdb_ci_linux_server from ServiceWatch Probe',
+    ?, ?, ?, 'open', 2, NULL
+);</code></pre>
+          <p>The item receives an output result code of <code>MULTI_MATCH</code> and is not committed to the CMDB. The outer batch continues.</p>
+        </div>
+      </div>
+
+      <!-- Phase 6 -->
+      <div class="phase-card" id="phase6">
+        <div class="phase-header">
+          <span class="phase-num">06</span>
+          <span class="phase-name">Reconciliation &amp; Field-Level Attribute Masking</span>
+          <span class="phase-tag tag tag-purple">Reconciliation</span>
+        </div>
+        <div class="phase-body">
+          <p>Phase 6 determines the precise set of fields the current data source is authorized to write, applying field-ownership and staleness rules before any data is committed to the database.</p>
+          <h4>Reconciliation Rule Loading</h4>
+          <p>The kernel loads applicable rows from <code>cmdb_reconciliation_rule</code> for the intersection of target class and data source. Each rule specifies a field name (or wildcard), a <code>precedence</code> order, and an <code>authoritative</code> flag indicating whether the source is the single authoritative writer for that field. Rules are cached per <code>(class, source)</code> pair in the <code>IREExecutionContext</code> for the duration of the batch.</p>
+          <h4>Tracking Token Lookup — cmdb_datasource_last_update</h4>
+          <p>For each field in the write map, the kernel reads the <strong>tracking token</strong> from <code>cmdb_datasource_last_update</code>:</p>
+          <pre><code>SELECT source_name, last_update, precedence_rank
+FROM   cmdb_datasource_last_update
+WHERE  ci_item_sys_id = ?       -- the identified CI's sys_id
+  AND  field_name     = ?;      -- the specific column being evaluated</code></pre>
+          <p>This row records which data source last successfully wrote this field and when. If the current source has a lower precedence rank (higher priority number = lower priority in this model) than the source recorded in the token, the field is <strong>masked</strong> — removed from the write map. The higher-precedence source retains ownership of the field value, and the current submission's value for that field is silently discarded.</p>
+          <h4>Staleness Override — cmdb_data_refresh_rule</h4>
+          <p>A source that would otherwise be outranked can reclaim a field if the existing token's <code>last_update</code> timestamp is older than the TTL configured in a matching <code>cmdb_data_refresh_rule</code> row. The kernel evaluates:</p>
+          <pre><code>IF (NOW() - token.last_update) > data_refresh_rule.max_age_seconds THEN
+    -- The higher-priority source's data is considered stale.
+    -- Current source is permitted to write this field regardless of precedence.
+    fieldWriteMap.include(fieldName, payloadValue);
+ELSE
+    fieldWriteMap.exclude(fieldName); -- mask: do not overwrite
+END IF;</code></pre>
+          <p>After this evaluation, the <code>fieldWriteMap</code> contains only the fields the current source is authorized and required to write. All subsequent phases operate only against this filtered map.</p>
+        </div>
+      </div>
+
+      <!-- Phase 7 -->
+      <div class="phase-card" id="phase7">
+        <div class="phase-header">
+          <span class="phase-num">07</span>
+          <span class="phase-name">Reclassification Matrix Processing</span>
+          <span class="phase-tag tag tag-orange">Reclassification</span>
+        </div>
+        <div class="phase-body">
+          <p>Phase 7 executes only on UPDATE paths (when an existing CI was identified). It compares the CI's current stored class against the class specified in the incoming payload and determines whether a reclassification operation is necessary and permitted.</p>
+          <h4>Reclassification Delta Calculation</h4>
+          <p>Using the in-memory class hierarchy from <code>DBObjectCache</code>, the kernel computes the relationship between <code>currentClass</code> and <code>payloadClass</code>:</p>
+          <pre><code>UPGRADE:    payloadClass is a subclass of currentClass
+            e.g., cmdb_ci_server → cmdb_ci_linux_server
+            (More specific; adds specialized attributes)
+
+DOWNGRADE:  payloadClass is a superclass of currentClass
+            e.g., cmdb_ci_linux_server → cmdb_ci_server
+            (Less specific; loses specialized attributes)
+
+HORIZONTAL: payloadClass and currentClass share a common ancestor
+            but neither is an ancestor of the other
+            e.g., cmdb_ci_linux_server → cmdb_ci_win_server
+            (Lateral switch; both are children of cmdb_ci_server)
+
+NONE:       payloadClass == currentClass
+            (No reclassification needed; Phase 7 exits immediately)</code></pre>
+          <h4>Restriction Property Checks</h4>
+          <p>The kernel evaluates the following system-level restriction flags before allowing any reclassification:</p>
+          <pre><code>glide.cmdb.reclassification.allow_downgrade  (boolean, default: true)
+glide.cmdb.reclassification.allow_horizontal (boolean, default: true)
+glide.cmdb.reclassification.restricted_classes (comma-delimited class list)</code></pre>
+          <p>If the target class appears in <code>restricted_classes</code>, all reclassification into that class is blocked regardless of direction. If the computed delta type is DOWNGRADE and <code>allow_downgrade</code> is false, the reclassification is blocked. Similarly for HORIZONTAL.</p>
+          <h4>cmdb_reclassification_task Generation</h4>
+          <p>For permitted reclassifications, the kernel inserts a <code>cmdb_reclassification_task</code> row before any schema changes are applied. The task records the from-class, to-class, delta type, the triggering data source, and the CI sys_id. The actual table-level schema change (moving the row from one extended table to another) is deferred to Phase 8 as part of the atomic commit sequence.</p>
+          <div class="callout warn">
+            <div class="callout-title">⚠ Horizontal Reclassification Risk</div>
+            Horizontal reclassification requires: (1) DELETEing the row from the source extension table, (2) INSERTing into the destination extension table, and (3) leaving the base <code>cmdb_ci</code> and <code>cmdb_ci_hardware</code> rows intact. If this operation is interrupted mid-Phase-8, orphaned extension rows can result. Ensure <code>glide.id_engine.rollback_on_error</code> is <code>true</code> in any environment processing reclassifications.
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 8 -->
+      <div class="phase-card" id="phase8">
+        <div class="phase-header">
+          <span class="phase-num">08</span>
+          <span class="phase-name">Atomic Transaction Commit Phase</span>
+          <span class="phase-tag tag tag-green">Commit</span>
+        </div>
+        <div class="phase-body">
+          <p>Phase 8 materializes all decisions made in Phases 1–7 into durable database writes within the ambient transaction. All SQL operations in Phase 8 are issued as a single batched statement group to the JDBC connection.</p>
+          <h4>CI Table INSERT / UPDATE</h4>
+          <pre><code>-- CREATE path: new CI
+INSERT INTO cmdb_ci (sys_id, sys_class_name, name, sys_created_by, ...)
+VALUES (UUID(), 'cmdb_ci_linux_server', 'prod-db-01.corp.internal', 'system', ...);
+
+-- Extended table insert (for non-base-class attributes)
+INSERT INTO cmdb_ci_server (sys_id, serial_number, ram, ...)
+VALUES (/* same sys_id */, 'SN-A7F9-2241', 32768, ...);
+
+INSERT INTO cmdb_ci_linux_server (sys_id, ip_address, kernel_release, ...)
+VALUES (/* same sys_id */, '10.10.5.44', '5.15.0-91', ...);
+
+-- UPDATE path: existing CI (only fieldWriteMap fields)
+UPDATE cmdb_ci_linux_server
+SET    ip_address = '10.10.5.44',
+       serial_number = 'SN-A7F9-2241'
+WHERE  sys_id = '/* identifiedSysId */';</code></pre>
+          <h4>Relationship INSERT — cmdb_rel_ci</h4>
+          <pre><code>-- For each relation in the payload's "relations" array
+INSERT INTO cmdb_rel_ci (sys_id, parent, child, type, sys_created_by)
+VALUES (UUID(), '/* parent_sys_id */', '/* child_sys_id */',
+        '/* relation_type_sys_id */', 'system')
+ON DUPLICATE KEY UPDATE type = VALUES(type);</code></pre>
+          <h4>Identity Register Upsert — sys_object_source</h4>
+          <pre><code>INSERT INTO sys_object_source (
+    sys_id, source_name, source_native_key,
+    target_sys_id, target_class, last_scan
+)
+VALUES (UUID(), 'ServiceWatch Probe', 'SN-A7F9-2241',
+        '/* ci_sys_id */', 'cmdb_ci_linux_server', NOW())
+ON DUPLICATE KEY UPDATE
+    target_sys_id = VALUES(target_sys_id),
+    target_class  = VALUES(target_class),
+    last_scan     = NOW();</code></pre>
+          <h4>Output Tables</h4>
+          <pre><code>-- Per-item result
+INSERT INTO cmdb_ire_output_target_item (
+    batch_request_id, item_index, class_name,
+    result_code,        -- CREATED | UPDATED | NO_CHANGE | BLOCKED | ERROR
+    ci_sys_id, operation, message, source_name
+) VALUES (?, ?, ?, 'CREATED', '/* sys_id */', 'INSERT', NULL, ?);
+
+-- Aggregate stats (one row per batch request, updated per item)
+UPDATE cmdb_ire_output_aggregate_stats
+SET    created_count  = created_count  + 1,
+       processed_count = processed_count + 1
+WHERE  batch_request_id = ?;</code></pre>
+          <h4>Tracking Token Update</h4>
+          <pre><code>-- Update cmdb_datasource_last_update for every field written
+INSERT INTO cmdb_datasource_last_update (
+    ci_item_sys_id, field_name, source_name, last_update, precedence_rank
+) VALUES (?, ?, 'ServiceWatch Probe', NOW(), ?)
+ON DUPLICATE KEY UPDATE
+    last_update      = NOW(),
+    source_name      = VALUES(source_name),
+    precedence_rank  = VALUES(precedence_rank);</code></pre>
+        </div>
+      </div>
+
+    </div><!-- /phase-grid -->
+  </section>
+
+  <hr class="section-divider" />
+
+
+  <!-- ═══════════════════════════════════════════════════
+       §3 — STORAGE ARCHITECTURE
+  ═══════════════════════════════════════════════════ -->
+  <section id="s3">
+    <div class="section-header">
+      <span class="section-num">§ 03</span>
+      <h2 class="section-title">Storage Architecture — Internal Tables Reference Map</h2>
+    </div>
+
+    <p>The following table catalogs every database table accessed by the IRE kernel. Schema Classification indicates the logical role of the table in the overall architecture. Database Operations indicates the SQL verbs the kernel issues against it. Functional Role describes the precise operational trigger and data contract.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Table Name</th>
+            <th>Schema Class</th>
+            <th>DB Operations</th>
+            <th>Functional Role &amp; Operational Trigger</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>cmdb_identifier</td>
+            <td class="schema-meta">Metadata</td>
+            <td class="op-read">Read Only</td>
+            <td>Root definition of an identification rule set. Each row maps a CMDB class (or ancestor class) to an ordered collection of identifier entries. Loaded once per class per JVM lifetime into the <code>CompiledIdentifierRuleSet</code> cache. Invalidated on table modification via platform cache flush event. Queried in Phase 5 when the Fast-Pass cache misses.</td>
+          </tr>
+          <tr>
+            <td>cmdb_identifier_entry</td>
+            <td class="schema-meta">Metadata</td>
+            <td class="op-read">Read Only</td>
+            <td>Defines individual identification criteria within a rule set. Each row specifies a set of fields and their matching logic (exact, case-insensitive, CI query). Ordered by <code>priority</code> integer. Multiple entries in priority order form the fallback chain. Compiled into <code>CompiledIdentifierEntry</code> objects and cached inside <code>CompiledIdentifierRuleSet</code>. Queried once during cache population.</td>
+          </tr>
+          <tr>
+            <td>cmdb_related_entry</td>
+            <td class="schema-meta">Metadata</td>
+            <td class="op-read">Read Only</td>
+            <td>Defines cross-CI reference fields within an identifier entry. Used when an identifier criterion field is a reference to another CI (e.g., host server for a NIC card). Triggers a recursive sub-resolution cycle in Phase 5. Compiled and cached together with its parent <code>cmdb_identifier_entry</code>.</td>
+          </tr>
+          <tr>
+            <td>cmdb_ire_data_source_rule</td>
+            <td class="schema-gate">Gatekeeping</td>
+            <td class="op-read">Read Only</td>
+            <td>Defines per-source, per-class operation permissions (allow_insert, allow_update, applies_to_subclasses). Loaded into <code>CopyOnWriteArrayList&lt;DataSourceRule&gt;</code> at first access and invalidated on table modification. Evaluated exclusively in Phase 2. When absent or disabled via system property, all sources are unconditionally permitted.</td>
+          </tr>
+          <tr>
+            <td>sys_object_source</td>
+            <td class="schema-cache">Cache</td>
+            <td class="op-rwd">Read / Write</td>
+            <td>The identity register. Maps <code>(source_name, source_native_key)</code> to a resolved <code>(target_sys_id, target_class)</code>. Read in Phase 4 for Fast-Pass lookup (single-row JDBC query). Upserted in Phase 8 upon successful CREATE or UPDATED commit. The index <code>idx_sos_source_nativekey</code> on <code>(source_name, source_native_key)</code> is critical for Phase 4 performance.</td>
+          </tr>
+          <tr>
+            <td>cmdb_datasource_last_update</td>
+            <td class="schema-state">State Tracking</td>
+            <td class="op-rwd">Read / Write</td>
+            <td>Field-level ownership tracking tokens. Each row records the source name, last write timestamp, and precedence rank for a specific field on a specific CI. Read per-field in Phase 6 to evaluate masking decisions. Batch-upserted in Phase 8 for every field included in the write map. High write volume table; benefits from partitioning by <code>ci_item_sys_id</code>.</td>
+          </tr>
+          <tr>
+            <td>cmdb_ire_partial_payloads_index</td>
+            <td class="schema-cache">Cache</td>
+            <td class="op-rwd">Read / Write / Delete</td>
+            <td>Lightweight index for the partial payload cache. Each row stores the dependency hash, source name, class name, and a foreign reference to the corresponding <code>cmdb_ire_partial_payloads</code> row. Queried in Phase 3 to detect orphaned dependency stubs. Inserted when a recoverable error generates a new partial payload entry. Deleted (hard DELETE) when the matching partial is successfully consumed in a later submission.</td>
+          </tr>
+          <tr>
+            <td>cmdb_ire_partial_payloads</td>
+            <td class="schema-cache">Cache</td>
+            <td class="op-rwd">Read / Write / Delete</td>
+            <td>Stores the raw JSON blob of a partial payload item for up to 90 days. The <code>payload_json</code> column is a TEXT/LONGTEXT field. Fetched in Phase 3 when the index returns a hit. Written when a recoverable error (e.g., <code>MISSING_DEPENDENCY</code>, <code>REQUIRED_ATTRIBUTE_EMPTY</code>) is encountered. Hard-deleted when consumed or when the nightly TTL cleanup job runs. Never modified in-place; consumed rows are deleted and re-inserted if an update arrives.</td>
+          </tr>
+          <tr>
+            <td>cmdb_ire_incomplete_payloads</td>
+            <td class="schema-log">Log / DLQ</td>
+            <td class="op-write">Write Only</td>
+            <td>Dead-Letter Queue for fatal, non-recoverable payload failures. Receives items that failed Phase 1 structural validation or had completely missing identity metrics. Implemented as a <strong>7-day rolling table rotation</strong> (see §4). The kernel never reads from this table during normal processing; it is write-only from the IRE's perspective. Consumed externally by monitoring jobs and alert dashboards.</td>
+          </tr>
+          <tr>
+            <td>cmdb_duplicate_audit_result</td>
+            <td class="schema-log">Log</td>
+            <td class="op-write">Write Only</td>
+            <td>Audit log for multi-match (duplicate) events detected in Phase 5. One row per multi-match occurrence. Contains the list of candidate CI sys_ids that matched the same identifier criteria, the triggering payload snapshot, and the detection timestamp. Status field transitions from <code>open</code> to <code>resolved</code> when the linked <code>reconciliation_duplicate_task</code> is closed.</td>
+          </tr>
+          <tr>
+            <td>reconciliation_duplicate_task</td>
+            <td class="schema-state">State Tracking</td>
+            <td class="op-write">Write Only</td>
+            <td>Actionable ServiceNow Task record generated for each multi-match event. Links to <code>cmdb_duplicate_audit_result</code> via foreign key. Assigned to the CMDB data stewardship group or a configured assignment group. State machine: open → in_progress → resolved. Resolution requires a human or automated process to merge/delete duplicate CIs and mark the audit result resolved. Written by the kernel in Phase 5; subsequently managed by the task workflow.</td>
+          </tr>
+          <tr>
+            <td>cmdb_reclassification_task</td>
+            <td class="schema-state">State Tracking</td>
+            <td class="op-write">Write Only</td>
+            <td>Task record created before a reclassification is applied. Records the source and destination class, the reclassification type (UPGRADE, DOWNGRADE, HORIZONTAL), and the triggering source. Written in Phase 7. The task transitions to <code>completed</code> automatically after the Phase 8 commit succeeds. If Phase 8 fails and rolls back, the task is also rolled back within the same transaction.</td>
+          </tr>
+          <tr>
+            <td>cmdb_ire_output_target_item</td>
+            <td class="schema-log">Log</td>
+            <td class="op-write">Write Only</td>
+            <td>Per-item result record for each item processed within a batch request. Contains: batch_request_id, item_index, result_code (CREATED, UPDATED, NO_CHANGE, BLOCKED, ERROR, MULTI_MATCH), ci_sys_id (if committed), and a message string for error details. Written in Phase 8 for successful items; written at the terminal error exit point for any phase where the item is blocked. The primary output consumed by the calling integration to understand per-CI processing results.</td>
+          </tr>
+          <tr>
+            <td>cmdb_ire_output_aggregate_stats</td>
+            <td class="schema-log">Log</td>
+            <td class="op-rwd">Read / Write</td>
+            <td>One row per batch request. Accumulates counters: <code>created_count</code>, <code>updated_count</code>, <code>no_change_count</code>, <code>error_count</code>, <code>blocked_count</code>, <code>multi_match_count</code>, <code>processed_count</code>. The row is INSERTed at batch start and UPDATEd (counter increment) after each item commits or fails in Phase 8. Read by the caller's response handler after all items are processed to build the batch-level summary response.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="section-divider" />
+
+
+  <!-- ═══════════════════════════════════════════════════
+       §4 — ERROR RECOVERY & CACHE PROCESSING
+  ═══════════════════════════════════════════════════ -->
+  <section id="s4">
+    <div class="section-header">
+      <span class="section-num">§ 04</span>
+      <h2 class="section-title">Deep Dive: Error Recovery &amp; Cache Processing Mechanics</h2>
+    </div>
+
+    <h3 id="s4-recoverable">4.1 Recoverable Error Pipeline</h3>
+    <p>
+      Recoverable errors arise when an item is structurally valid and not blocked by gatekeeping, but cannot be fully processed in the current submission because of missing dependency data or empty required attributes. Rather than failing permanently, the kernel serializes the item into the partial payload cache to await a future submission that satisfies the outstanding requirements.
+    </p>
+    <p><strong>Error conditions classified as Recoverable:</strong></p>
+    <ul style="margin: 12px 0 20px 24px; color: var(--text); font-size:15px; line-height:2;">
+      <li><code>MISSING_DEPENDENCY</code> — A <code>lookupEntry</code> referenced CI type could not be identified; the parent CI therefore has an unresolvable reference field.</li>
+      <li><code>REQUIRED_ATTRIBUTE_EMPTY</code> — One or more mandatory fields for the identifier rule are absent in the current payload but may arrive in a subsequent submission.</li>
+      <li><code>PARTIAL_IDENTIFIER_DATA</code> — Some but not all fields required for the highest-priority identifier entry are present; insufficient for a reliable identity resolution.</li>
+    </ul>
+
+    <span class="pre-label">ASCII — Recoverable Error → Partial Payload Cache Pipeline</span>
+    <pre class="ascii"><code>
+  IRE State Machine: Phase 1, 3, or 5 emits RecoverableError
+       │
+       ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  STEP 1: Dependency Hash Computation                                 │
+  │  · Canonicalize: sorted(className + dataSource + identifierFields)   │
+  │  · Hash = SHA-256( canonical_string ).toHexString()                  │
+  │  · Hash is deterministic: identical payloads produce identical hash  │
+  └───────────────────────────┬──────────────────────────────────────────┘
+                              │
+                              ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  STEP 2: Duplicate Index Check                                       │
+  │  · SELECT COUNT(*) FROM cmdb_ire_partial_payloads_index              │
+  │    WHERE dependency_key = [hash] AND source_name = [src]             │
+  │  · If COUNT > 0: UPDATE existing entry's payload_json (merge + re-   │
+  │    insert new JSON blob into cmdb_ire_partial_payloads, update index │
+  │    row's payload_table_ref to point to new blob sys_id)              │
+  │  · If COUNT = 0: proceed to STEP 3                                   │
+  └───────────────────────────┬──────────────────────────────────────────┘
+                              │ COUNT = 0 (new partial)
+                              ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  STEP 3: Serialize Payload JSON Blob                                  │
+  │  · Re-serialize the in-memory IREPayloadItem to a canonical JSON     │
+  │    string using the platform's Jackson ObjectMapper (compact format,  │
+  │    sorted keys for determinism).                                     │
+  │  · Truncates to max 512 KB. If > 512 KB: emits SIZE_EXCEEDED warning │
+  │    and marks item as non-cacheable → routes to DLQ instead.          │
+  └───────────────────────────┬──────────────────────────────────────────┘
+                              │
+                              ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  STEP 4: Insert Blob Row → cmdb_ire_partial_payloads                 │
+  │  INSERT INTO cmdb_ire_partial_payloads (                             │
+  │      sys_id, payload_json, class_name, source_name,                  │
+  │      error_code, created_on                                          │
+  │  ) VALUES (UUID(), '[json]', '[class]', '[src]',                     │
+  │            'MISSING_DEPENDENCY', NOW());                             │
+  └───────────────────────────┬──────────────────────────────────────────┘
+                              │
+                              ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  STEP 5: Insert Index Row → cmdb_ire_partial_payloads_index          │
+  │  INSERT INTO cmdb_ire_partial_payloads_index (                       │
+  │      sys_id, dependency_key, payload_table_ref,                      │
+  │      source_name, class_name, created_on                             │
+  │  ) VALUES (UUID(), '[hash]', '[blob_sys_id]',                        │
+  │            '[src]', '[class]', NOW());                               │
+  └───────────────────────────┬──────────────────────────────────────────┘
+                              │
+                              ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  STEP 6: Output Item Result                                          │
+  │  · Writes CACHED result code to cmdb_ire_output_target_item          │
+  │  · No CI is created or updated                                       │
+  │  · Outer batch continues to next item                                │
+  │  · TTL: 90 days from created_on (enforced by nightly cleanup job     │
+  │    AND by the Phase 3 lookback query predicate)                      │
+  └──────────────────────────────────────────────────────────────────────┘
+    </code></pre>
+
+    <h3 id="s4-fatal">4.2 Fatal Error Pipeline — Dead-Letter Queue &amp; Table Rotation</h3>
+    <p>
+      Fatal errors represent payloads that are permanently unprocessable: malformed JSON that cannot be deserialized, completely absent identity metrics with no possibility of future resolution, or class names that do not exist in the CMDB schema. These items are routed to the <strong>Dead-Letter Queue</strong> implemented by <code>cmdb_ire_incomplete_payloads</code>.
+    </p>
+    <p><strong>Error conditions classified as Fatal:</strong></p>
+    <ul style="margin: 12px 0 20px 24px; color: var(--text); font-size:15px; line-height:2;">
+      <li><code>MALFORMED_JSON</code> — The payload string could not be parsed by the Jackson deserializer. The raw string is stored as-is (truncated to 64 KB).</li>
+      <li><code>INVALID_CLASS</code> — The <code>className</code> field resolves to no entry in <code>sys_db_object</code>, or to a non-CMDB table.</li>
+      <li><code>NO_IDENTITY_METRICS</code> — Zero fields in the payload correspond to any identifier entry criterion for the target class. No identifier rule can ever match this item.</li>
+      <li><code>PAYLOAD_GRAPH_CYCLE</code> — The <code>lookupEntries</code> dependency graph contains a circular reference that cannot be resolved.</li>
+    </ul>
+
+    <span class="pre-label">ASCII — Fatal Error → DLQ Pipeline</span>
+    <pre class="ascii warn"><code>
+  IRE State Machine: Phase 1 or Phase 5 emits FatalError
+       │
+       ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  STEP 1: Raw Payload Capture                                         │
+  │  · Extract raw_payload string from IREExecutionContext               │
+  │  · If original JSON was parseable: re-serialize the IREPayloadItem   │
+  │  · If not parseable (MALFORMED_JSON): use original raw bytes         │
+  │  · Truncate to 65,535 bytes (max TEXT column size on MySQL/MariaDB)  │
+  │  · Record error_code, error_detail string, and phase_failed (1–8)   │
+  └───────────────────────────┬──────────────────────────────────────────┘
+                              │
+                              ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  STEP 2: Table Rotation Lookup                                       │
+  │  · Evaluate current physical DLQ table name using 7-day rotation:   │
+  │                                                                      │
+  │    week_index = FLOOR(UNIX_TIMESTAMP(NOW()) / (7 * 86400)) % 4      │
+  │    table_name = "cmdb_ire_incomplete_payloads_w" + week_index        │
+  │                                                                      │
+  │  → Results in 4 rotating physical tables:                            │
+  │      cmdb_ire_incomplete_payloads_w0                                 │
+  │      cmdb_ire_incomplete_payloads_w1                                 │
+  │      cmdb_ire_incomplete_payloads_w2                                 │
+  │      cmdb_ire_incomplete_payloads_w3                                 │
+  │                                                                      │
+  │  The logical table cmdb_ire_incomplete_payloads is a VIEW that       │
+  │  UNIONs all 4 physical tables:                                       │
+  │    CREATE VIEW cmdb_ire_incomplete_payloads AS                       │
+  │      SELECT * FROM cmdb_ire_incomplete_payloads_w0                   │
+  │      UNION ALL                                                        │
+  │      SELECT * FROM cmdb_ire_incomplete_payloads_w1                   │
+  │      UNION ALL                                                        │
+  │      SELECT * FROM cmdb_ire_incomplete_payloads_w2                   │
+  │      UNION ALL                                                        │
+  │      SELECT * FROM cmdb_ire_incomplete_payloads_w3;                  │
+  └───────────────────────────┬──────────────────────────────────────────┘
+                              │
+                              ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  STEP 3: DLQ Insert                                                  │
+  │  INSERT INTO cmdb_ire_incomplete_payloads_w[N] (                    │
+  │      sys_id, source_name, class_name,                               │
+  │      raw_payload,    -- raw JSON bytes, truncated                    │
+  │      error_code,     -- MALFORMED_JSON | INVALID_CLASS | etc.        │
+  │      error_detail,   -- human-readable description                   │
+  │      phase_failed,   -- integer: 1–8                                 │
+  │      created_on                                                      │
+  │  ) VALUES (UUID(), ?, ?, ?, ?, ?, ?, NOW());                        │
+  └───────────────────────────┬──────────────────────────────────────────┘
+                              │
+                              ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  STEP 4: Weekly Table Truncation (Rotation)                          │
+  │  · At week rollover, the NEXT table slot is TRUNCATED before use:    │
+  │                                                                      │
+  │    next_slot = (week_index + 1) % 4                                  │
+  │    TRUNCATE TABLE cmdb_ire_incomplete_payloads_w[next_slot];         │
+  │                                                                      │
+  │  · This TRUNCATE is issued by the weekly scheduled platform job:     │
+  │    "IRE DLQ Table Rotation" — runs Monday 00:00 UTC                  │
+  │  · TRUNCATE is a DDL operation that deallocates data pages entirely,  │
+  │    preventing database block inflation from accumulated DLQ inserts  │
+  │  · Effective retention: minimum 7 days, maximum ~28 days depending   │
+  │    on when within the rotation cycle the item was written             │
+  └──────────────────────────────────────────────────────────────────────┘
+    </code></pre>
+
+    <div class="callout info">
+      <div class="callout-title">🔁 Why Table Rotation Instead of DELETE?</div>
+      A rolling <code>TRUNCATE</code> strategy is architecturally superior to periodic <code>DELETE WHERE created_on &lt; NOW() - INTERVAL 7 DAY</code> for DLQ workloads because: (1) <code>TRUNCATE</code> is a DDL operation that returns pages to the OS immediately, preventing InnoDB/MySQL tablespace bloat; (2) it is O(1) regardless of row count; (3) it does not generate individual undo log entries, avoiding transaction log pressure; and (4) it does not require a full table scan. The cost is reduced query precision — you cannot selectively retain DLQ entries older than 7 days without additional archival infrastructure.
+    </div>
+  </section>
+
+  <hr class="section-divider" />
+
+
+  <!-- ═══════════════════════════════════════════════════
+       §5 — KERNEL SYSTEM PROPERTIES
+  ═══════════════════════════════════════════════════ -->
+  <section id="s5">
+    <div class="section-header">
+      <span class="section-num">§ 05</span>
+      <h2 class="section-title">Kernel-Level System Properties &amp; Micro-Tuning Flags</h2>
+    </div>
+
+    <p>The following system properties are evaluated by the IRE kernel at runtime. Changes to these properties take effect on the next IRE invocation without a node restart, as they are read from the platform property cache which is updated on write. Properties are set via <strong>System Definition → System Properties</strong> or via the <code>sys_properties</code> table directly.</p>
+
+    <div class="prop-table">
+      <div class="prop-row prop-header">
+        <div class="prop-name">Property Name</div>
+        <div class="prop-type">Type</div>
+        <div class="prop-def">Default</div>
+        <div class="prop-desc">Micro-Tuning Impact &amp; Behavioral Detail</div>
+      </div>
+
+      <div class="prop-row">
+        <div class="prop-name">glide.cmdb.logger.source.<br>identification_engine</div>
+        <div class="prop-type">String</div>
+        <div class="prop-def">warn</div>
+        <div class="prop-desc">
+          <p>Controls the log verbosity level of the IRE kernel's internal logger (<code>com.snc.cmdb.identification</code>). Valid values in ascending verbosity order: <code>error</code>, <code>warn</code>, <code>info</code>, <code>debug</code>, <code>trace</code>.</p>
+          <p>Setting to <strong><code>debug</code></strong> causes the kernel to output to the node's <code>logs/glide.log</code>: each phase transition per item, cache hit/miss events for the identifier rule cache and Fast-Pass, result codes per item, and field masking decisions (which fields were masked and by which competing source).</p>
+          <p>Setting to <strong><code>trace</code></strong> additionally emits the compiled SQL statement strings for every JDBC query issued during Phases 3, 4, 5, and 6, along with the bind parameter values (WARNING: bind values may include PII such as hostnames and IP addresses). Trace-level output also logs the full in-memory merge result after Phase 3 partial payload reconstruction and the complete field write map after Phase 6 masking.</p>
+          <p><strong>Production warning:</strong> <code>trace</code> level generates approximately 2–8 KB of log output per payload item. At high integration throughput (10,000+ items/minute), this will saturate disk I/O on the node's log volume and cause severe performance degradation. Use <code>debug</code> or <code>trace</code> only during targeted diagnostic windows with throttled input volume.</p>
+        </div>
+      </div>
+
+      <div class="prop-row">
+        <div class="prop-name">glide.id_engine.partial_payload.enable</div>
+        <div class="prop-type">Boolean</div>
+        <div class="prop-def">true</div>
+        <div class="prop-desc">
+          <p>Master toggle for the Phase 3 partial payload cache system. When set to <strong><code>false</code></strong>, the kernel skips Phase 3 entirely — no lookback query is issued against <code>cmdb_ire_partial_payloads_index</code>, no partial blob is fetched or merged, and no new partial payload entries are created for recoverable errors.</p>
+          <p>Recoverable errors (<code>MISSING_DEPENDENCY</code>, <code>REQUIRED_ATTRIBUTE_EMPTY</code>) that would otherwise generate partial cache entries are instead treated as <strong>non-fatal, non-cached errors</strong>: the item is written to <code>cmdb_ire_output_target_item</code> with result code <code>SKIPPED_NO_CACHE</code> and processing continues without any cache write.</p>
+          <p>Disabling this property reduces database write volume and eliminates Phase 3 latency for integrations where all dependency data is guaranteed to arrive in a single payload (e.g., fully enriched SCCM payloads). It should be disabled with caution for integrations that legitimately rely on multi-submission dependency resolution (e.g., agentless network discovery where topology and host data arrive in separate scans).</p>
+          <p>Existing rows in the partial payload tables are not purged when this property is set to <code>false</code>. They will simply never be consumed.</p>
+        </div>
+      </div>
+
+      <div class="prop-row">
+        <div class="prop-name">glide.id_engine.cmdb_data_source_rule.enable</div>
+        <div class="prop-type">Boolean</div>
+        <div class="prop-def">true</div>
+        <div class="prop-desc">
+          <p>Controls whether Phase 2 Pre-Gatekeeping evaluation is performed. When set to <strong><code>false</code></strong>, the kernel bypasses the entire <code>cmdb_ire_data_source_rule</code> evaluation, treating every data source as unconditionally permitted to INSERT and UPDATE any CI class.</p>
+          <p>The <code>CopyOnWriteArrayList&lt;DataSourceRule&gt;</code> cache is still populated at first access even when this flag is <code>false</code>, as the cache population code path does not check this property. The property is only evaluated at the point where the rule evaluation logic would execute within Phase 2.</p>
+          <p>Disabling this property provides a minor performance improvement (one cache list traversal is skipped per item) but eliminates a critical security boundary that prevents unauthorized discovery sources from creating CIs in protected namespaces. This flag should only be set to <code>false</code> in isolated development or load-testing environments where all data sources are trusted and data source rules have not been configured.</p>
+          <p>Note: Disabling this flag does not affect reconciliation precedence (Phase 6). Data source rules and reconciliation rules are independent systems. A source blocked by a data source rule would still have been subject to field masking if it had been allowed through.</p>
+        </div>
+      </div>
+
+      <div class="prop-row">
+        <div class="prop-name">glide.id_engine.rollback_on_error</div>
+        <div class="prop-type">Boolean</div>
+        <div class="prop-def">true</div>
+        <div class="prop-desc">
+          <p>Controls Phase 8 transaction boundary isolation behavior when a SQL-level error occurs during the atomic commit sequence. This property governs per-item savepoint semantics within the ambient transaction.</p>
+          <p>When <strong><code>true</code></strong> (default): Before Phase 8 begins for each item, the kernel issues a <code>SAVEPOINT ire_item_[index]</code> against the ambient JDBC connection. If any SQL statement within the Phase 8 commit sequence fails (e.g., a unique constraint violation on <code>cmdb_rel_ci</code>, a foreign key violation, or a deadlock), the kernel issues <code>ROLLBACK TO SAVEPOINT ire_item_[index]</code> and then <code>RELEASE SAVEPOINT ire_item_[index]</code>. This reverts all Phase 8 writes for that item (CI tables, relationship rows, identity register, tracking tokens) without affecting the outer ambient transaction or the already-committed items in the same batch. The item receives result code <code>ERROR</code> in <code>cmdb_ire_output_target_item</code>. Batch processing continues with the next item. This enables <strong>partial-batch success semantics</strong>: 999 items in a 1000-item batch can commit even if item 500 fails.</p>
+          <p>When <strong><code>false</code></strong>: No savepoint is established. A Phase 8 SQL failure is propagated upward to the ambient transaction as an uncaught JDBC exception. The platform's transaction manager issues a full <code>ROLLBACK</code> of the entire ambient transaction, reverting all IRE writes across all items in the batch, all preceding business rule writes, and all caller-initiated writes within the same transaction scope. This is the all-or-nothing semantic: the entire batch either fully commits or fully rolls back. Use this setting only when absolute batch atomicity is a business requirement (e.g., financial asset CI records where partial writes would create inconsistent state).</p>
+        </div>
+      </div>
+
+    </div><!-- /prop-table -->
+
+    <div class="callout warn" style="margin-top:32px;">
+      <div class="callout-title">⚠ Property Evaluation Order</div>
+      System properties are read from the platform's in-memory property cache (<code>GlideProperties</code>), which is a node-local <code>ConcurrentHashMap</code> populated from <code>sys_properties</code>. Changes written to <code>sys_properties</code> via the UI or direct SQL are propagated to all nodes via the inter-node message bus with a typical latency of 1–5 seconds. During this propagation window, different nodes may evaluate different property values for the same IRE execution, which can cause transient inconsistent behavior in multi-node clusters. For critical toggles (especially <code>rollback_on_error</code>), verify property propagation across all active nodes before committing to a production change.
+    </div>
+
+  </section>
+
+</main>
+
+<script>
+  // Sidebar active state on scroll
+  const sections = document.querySelectorAll('section[id], div[id]');
+  const navLinks = document.querySelectorAll('nav#sidebar a');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`nav a[href="#${e.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -75% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
