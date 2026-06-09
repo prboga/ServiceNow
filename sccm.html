@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SG-SCCM Deep Dive | ServiceNow Integration Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-card: #161b22;
+    --bg-code: #1c2128;
+    --border: #30363d;
+    --border-subtle: #21262d;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #6e7681;
+    --accent-blue: #58a6ff;
+    --accent-green: #3fb950;
+    --accent-orange: #f0883e;
+    --accent-purple: #a371f7;
+    --accent-yellow: #d29922;
+    --accent-red: #f85149;
+    --accent-teal: #39d353;
+    --gradient-1: linear-gradient(135deg, #0d1117 0%, #1c2128 100%);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Sora', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background-color: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 56px 40px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 70% 60% at 10% 50%, rgba(88,166,255,.08) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 80% at 90% 20%, rgba(163,113,247,.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(88,166,255,.1);
+    border: 1px solid rgba(88,166,255,.3);
+    color: var(--accent-blue);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+  .hero-badge span { width: 6px; height: 6px; background: var(--accent-green); border-radius: 50%; animation: pulse 2s ease infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -.02em;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, var(--text-primary) 30%, var(--accent-blue) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    font-size: 16px;
+    color: var(--text-secondary);
+    max-width: 680px;
+    margin-bottom: 28px;
+    line-height: 1.6;
+  }
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  .meta-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .meta-tag .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-blue  { background: var(--accent-blue); }
+  .dot-green { background: var(--accent-green); }
+  .dot-orange{ background: var(--accent-orange); }
+  .dot-purple{ background: var(--accent-purple); }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: calc(100vh - 200px);
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 32px 20px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .sidebar-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    padding: 0 4px;
+  }
+  .sidebar-nav { list-style: none; }
+  .sidebar-nav li { margin-bottom: 2px; }
+  .sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: all .15s;
+    border: 1px solid transparent;
+  }
+  .sidebar-nav a:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-color: var(--border-subtle);
+  }
+  .sidebar-nav .num {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 4px;
+    min-width: 22px;
+    text-align: center;
+  }
+  .divider {
+    border-top: 1px solid var(--border-subtle);
+    margin: 16px 0;
+  }
+
+  /* ── CONTENT ── */
+  .content {
+    padding: 40px 48px;
+    max-width: 900px;
+  }
+
+  /* ── SECTION ── */
+  .section {
+    margin-bottom: 64px;
+    animation: fadeIn .4s ease both;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  .section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .section-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .section-title-wrap {}
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .section h2 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    color: var(--text-primary);
+  }
+
+  /* ── PROSE ── */
+  .prose p {
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    font-size: 15px;
+  }
+  .prose strong { color: var(--text-primary); font-weight: 600; }
+  .prose a { color: var(--accent-blue); text-decoration: none; }
+  .prose a:hover { text-decoration: underline; }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 24px 0;
+  }
+  .flow-step {
+    display: flex;
+    gap: 16px;
+    position: relative;
+  }
+  .flow-step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 36px;
+    bottom: -8px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--border), transparent);
+  }
+  .flow-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    border: 2px solid var(--border);
+    background: var(--bg-card);
+    z-index: 1;
+  }
+  .flow-body {
+    padding-bottom: 24px;
+    flex: 1;
+  }
+  .flow-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .flow-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  /* ── CALLOUT ── */
+  .callout {
+    display: flex;
+    gap: 12px;
+    padding: 16px 18px;
+    border-radius: 8px;
+    margin: 20px 0;
+    border: 1px solid;
+  }
+  .callout-info    { background: rgba(88,166,255,.06); border-color: rgba(88,166,255,.25); }
+  .callout-tip     { background: rgba(63,185,80,.06);  border-color: rgba(63,185,80,.25); }
+  .callout-warning { background: rgba(240,136,62,.06); border-color: rgba(240,136,62,.25); }
+  .callout-note    { background: rgba(163,113,247,.06); border-color: rgba(163,113,247,.25); }
+  .callout-icon { font-size: 16px; flex-shrink: 0; line-height: 1.6; }
+  .callout-content { font-size: 13.5px; color: var(--text-secondary); line-height: 1.65; }
+  .callout-content strong { color: var(--text-primary); }
+
+  /* ── CODE ── */
+  .code-block {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .code-lang {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+  }
+  .code-dots { display: flex; gap: 6px; }
+  .code-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .code-dot:nth-child(1) { background: #ff5f57; }
+  .code-dot:nth-child(2) { background: #febc2e; }
+  .code-dot:nth-child(3) { background: #28c840; }
+  code, pre {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  pre { padding: 18px 20px; color: var(--text-secondary); }
+  .kw { color: var(--accent-purple); }
+  .fn { color: var(--accent-blue); }
+  .str { color: var(--accent-orange); }
+  .cm { color: var(--text-muted); font-style: italic; }
+  .tag { color: var(--accent-green); }
+  .attr { color: var(--accent-orange); }
+  .val { color: var(--accent-teal); }
+
+  /* ── TABLE ── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    margin: 20px 0;
+  }
+  .data-table thead { background: var(--bg-code); }
+  .data-table th {
+    padding: 10px 14px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    vertical-align: top;
+  }
+  .data-table tbody tr:hover td { background: rgba(255,255,255,.02); }
+  .data-table td code {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--accent-blue);
+  }
+  .data-table td strong { color: var(--text-primary); }
+
+  /* ── BADGE CHIPS ── */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid;
+  }
+  .chip-blue   { color: var(--accent-blue);   border-color: rgba(88,166,255,.35);   background: rgba(88,166,255,.08); }
+  .chip-green  { color: var(--accent-green);  border-color: rgba(63,185,80,.35);    background: rgba(63,185,80,.08); }
+  .chip-orange { color: var(--accent-orange); border-color: rgba(240,136,62,.35);   background: rgba(240,136,62,.08); }
+  .chip-purple { color: var(--accent-purple); border-color: rgba(163,113,247,.35);  background: rgba(163,113,247,.08); }
+  .chip-yellow { color: var(--accent-yellow); border-color: rgba(210,153,34,.35);   background: rgba(210,153,34,.08); }
+  .chip-red    { color: var(--accent-red);    border-color: rgba(248,81,73,.35);    background: rgba(248,81,73,.08); }
+
+  /* ── ARCHITECTURE CARD ── */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px,1fr));
+    gap: 12px;
+    margin: 20px 0;
+  }
+  .arch-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    transition: border-color .2s;
+  }
+  .arch-card:hover { border-color: var(--accent-blue); }
+  .arch-card-icon { font-size: 20px; margin-bottom: 8px; }
+  .arch-card-title { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+  .arch-card-desc  { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+  /* ── PIPELINE ── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    padding: 24px 0;
+    margin: 20px 0;
+  }
+  .pipe-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    min-width: 100px;
+  }
+  .pipe-box {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    position: relative;
+  }
+  .pipe-box::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    opacity: .12;
+  }
+  .pipe-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: center;
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+  .pipe-arrow {
+    color: var(--border);
+    font-size: 20px;
+    flex-shrink: 0;
+    padding: 0 4px;
+    margin-bottom: 24px;
+  }
+  .p-blue   .pipe-box::after { background: var(--accent-blue); }
+  .p-green  .pipe-box::after { background: var(--accent-green); }
+  .p-orange .pipe-box::after { background: var(--accent-orange); }
+  .p-purple .pipe-box::after { background: var(--accent-purple); }
+  .p-teal   .pipe-box::after { background: #39d353; }
+  .p-yellow .pipe-box::after { background: var(--accent-yellow); }
+  .p-red    .pipe-box::after { background: var(--accent-red); }
+
+  /* ── INLINE CODE ── */
+  .ic {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--accent-orange);
+  }
+
+  /* ── STEP LIST ── */
+  .step-list { list-style: none; margin: 16px 0; }
+  .step-list li {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    align-items: flex-start;
+  }
+  .step-bullet {
+    min-width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* ── KEY-VALUE GRID ── */
+  .kv-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 16px 0;
+  }
+  .kv-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .kv-key {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .kv-val {
+    font-size: 13.5px;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .kv-val code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--accent-blue);
+    font-weight: 400;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 28px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .footer-text {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .footer-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-green);
+  }
+  .footer-status .dot { width: 6px; height: 6px; background: var(--accent-green); border-radius: 50%; animation: pulse 2s ease infinite; }
+
+  /* ── RESPONSIVE ── */
+  @media(max-width: 800px){
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .content { padding: 28px 20px; }
+    .kv-grid { grid-template-columns: 1fr; }
+    .hero { padding: 32px 20px; }
+    .footer { flex-direction: column; gap: 12px; padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">
+    <span></span>
+    Service Graph Connector · CMDB Integration Architecture
+  </div>
+  <h1>SG-SCCM Deep Dive<br>ServiceNow Architecture</h1>
+  <p class="hero-sub">
+    A comprehensive technical reference covering the end-to-end data flow of the Service Graph Connector for Microsoft SCCM — from Scheduled Import execution through MID Server JDBC processing, ECC Queue lifecycle, staging, RTE/ETL transformation, and final IRE ingestion into the CMDB.
+  </p>
+  <div class="hero-meta">
+    <span class="meta-tag"><span class="dot dot-blue"></span>Plugin: sn_sccm_integrate</span>
+    <span class="meta-tag"><span class="dot dot-green"></span>Transport: JDBC via MID Server</span>
+    <span class="meta-tag"><span class="dot dot-orange"></span>Target: CMDB / IRE</span>
+    <span class="meta-tag"><span class="dot dot-purple"></span>Engine: RTE + IntegrationHub ETL</span>
+  </div>
+</div>
+
+<!-- END-TO-END PIPELINE BANNER -->
+<div style="background:var(--bg-card); border-bottom:1px solid var(--border); padding:0 40px; overflow-x:auto;">
+  <div class="pipeline" style="min-width:900px; padding:20px 0;">
+    <div class="pipe-node p-blue">
+      <div class="pipe-box">🗓️</div>
+      <div class="pipe-label">Scheduled<br>Import</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node p-orange">
+      <div class="pipe-box">📋</div>
+      <div class="pipe-label">Data Source<br>(JDBC)</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node p-purple">
+      <div class="pipe-box">📤</div>
+      <div class="pipe-label">ECC Queue<br>Output</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node p-teal">
+      <div class="pipe-box">🖥️</div>
+      <div class="pipe-label">MID Server<br>JDBC Probe</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node p-green">
+      <div class="pipe-box">📥</div>
+      <div class="pipe-label">ECC Queue<br>Input</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node p-yellow">
+      <div class="pipe-box">📊</div>
+      <div class="pipe-label">Staging<br>Table</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node p-orange">
+      <div class="pipe-box">⚙️</div>
+      <div class="pipe-label">RTE / ETL<br>Transform</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node p-red">
+      <div class="pipe-box">🧠</div>
+      <div class="pipe-label">IRE<br>Engine</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node p-blue">
+      <div class="pipe-box">🗄️</div>
+      <div class="pipe-label">CMDB<br>Tables</div>
+    </div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div style="max-width:1400px; margin:0 auto;">
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-title">Contents</div>
+  <ul class="sidebar-nav">
+    <li><a href="#s1"><span class="num">01</span> How SG-SCCM Works</a></li>
+    <li><a href="#s2"><span class="num">02</span> Import Schedule Execution</a></li>
+    <li><a href="#s3"><span class="num">03</span> Data Source → Import Schedule</a></li>
+    <li><a href="#s4"><span class="num">04</span> ECC Queue Output Record</a></li>
+    <li><a href="#s5"><span class="num">05</span> MID Server Pickup</a></li>
+    <li><a href="#s6"><span class="num">06</span> SQL Execution on MID</a></li>
+    <li><a href="#s7"><span class="num">07</span> Single Exec vs Batching</a></li>
+    <li><a href="#s8"><span class="num">08</span> MID Server Output Storage</a></li>
+    <li><a href="#s9"><span class="num">09</span> Output → ECC Input Records</a></li>
+    <li><a href="#s10"><span class="num">10</span> Staging Table Population</a></li>
+    <li><a href="#s11"><span class="num">11</span> RTE & ETL Processing</a></li>
+    <li><a href="#s12"><span class="num">12</span> ETL Payload → IRE</a></li>
+  </ul>
+  <div class="divider"></div>
+  <div class="sidebar-title">Key Tables</div>
+  <ul class="sidebar-nav">
+    <li><a href="#s1"><span class="num" style="font-size:9px;min-width:28px;">TBL</span> sn_sccm_integrate_instance</a></li>
+    <li><a href="#s3"><span class="num" style="font-size:9px;min-width:28px;">TBL</span> sys_data_source</a></li>
+    <li><a href="#s4"><span class="num" style="font-size:9px;min-width:28px;">TBL</span> ecc_queue</a></li>
+    <li><a href="#s10"><span class="num" style="font-size:9px;min-width:28px;">TBL</span> sys_import_set_row</a></li>
+    <li><a href="#s12"><span class="num" style="font-size:9px;min-width:28px;">TBL</span> cmdb_ci_computer</a></li>
+  </ul>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="content">
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SECTION 1 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="section" id="s1">
+  <div class="section-header">
+    <div class="section-num">01</div>
+    <div class="section-title-wrap">
+      <div class="section-label">Overview</div>
+      <h2>How SG-SCCM Works</h2>
+    </div>
+  </div>
+  <div class="prose">
+    <p>
+      <strong>SG-SCCM (Service Graph Connector for Microsoft SCCM)</strong> is a ServiceNow application
+      (<span class="ic">sn_sccm_integrate</span>) that performs a <strong>one-directional, scheduled import</strong>
+      of device and software data from Microsoft Configuration Manager's SQL Server database directly into the
+      ServiceNow CMDB. SCCM is treated as an <em>authoritative, read-only</em> data source — the connector
+      never writes back to SCCM.
+    </p>
+    <p>
+      Microsoft Configuration Manager (SCCM) discovers devices in the network (e.g., via Active Directory Forest
+      Discovery) and stores all hardware inventory, software inventory, and network data in its SQL Server database.
+      SG-SCCM reaches into that SQL Server database via a JDBC connection routed through a Windows-based
+      MID Server, and ingests the data into CMDB tables.
+    </p>
+  </div>
+
+  <div class="arch-grid">
+    <div class="arch-card">
+      <div class="arch-card-icon">🏗️</div>
+      <div class="arch-card-title">Plugin</div>
+      <div class="arch-card-desc"><code>sn_sccm_integrate</code> — installed from the ServiceNow Store</div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-card-icon">🔗</div>
+      <div class="arch-card-title">Transport</div>
+      <div class="arch-card-desc">JDBC connection to SCCM SQL Server database via Windows MID Server</div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-card-icon">📥</div>
+      <div class="arch-card-title">Direction</div>
+      <div class="arch-card-desc">One-way only: SCCM SQL Server → ServiceNow CMDB</div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-card-icon">🧩</div>
+      <div class="arch-card-title">Dependencies</div>
+      <div class="arch-card-desc">IntegrationHub ETL (<code>sn_cmdb_int_util</code>), CMDB CI Class Model</div>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">ℹ️</div>
+    <div class="callout-content">
+      SG-SCCM ships with <strong>14 OOTB Scheduled Data Import templates</strong> (11 without SAM). The
+      <strong>Computer Identity</strong> job is the <em>parent job</em> — all other child jobs wait for it to
+      complete before running. Each job has a corresponding Data Source and Robust Import Set Transformer record.
+    </div>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Scheduled Import Job</th><th>Target</th><th>Delta?</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>SG-SCCM Computer Identity</strong> <span class="chip chip-blue">Parent</span></td><td>cmdb_ci_computer / cmdb_ci_win_server</td><td><span class="chip chip-green">Yes</span></td></tr>
+      <tr><td>SG-SCCM Software</td><td>cmdb_sam_sw_install / cmdb_software_instance</td><td><span class="chip chip-green">Yes</span></td></tr>
+      <tr><td>SG-SCCM Processor</td><td>Computer CI processor fields</td><td><span class="chip chip-green">Yes</span></td></tr>
+      <tr><td>SG-SCCM Operating System</td><td>Computer CI OS fields</td><td><span class="chip chip-green">Yes</span></td></tr>
+      <tr><td>SG-SCCM Network</td><td>cmdb_ci_network_adapter, cmdb_ci_ip_address</td><td><span class="chip chip-green">Yes</span></td></tr>
+      <tr><td>SG-SCCM Disk</td><td>cmdb_ci_disk (Storage Devices related list)</td><td><span class="chip chip-green">Yes</span></td></tr>
+      <tr><td>SG-SCCM Computer OU</td><td>SG-SCCM Computer Related view</td><td><span class="chip chip-green">Yes</span></td></tr>
+      <tr><td>SG-SCCM Removed Software</td><td>Removes stale software install records</td><td><span class="chip chip-red">No</span></td></tr>
+      <tr><td>SG-SCCM Last Discovered Update</td><td>Most Recent Discovery field on all CIs</td><td><span class="chip chip-red">No</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SECTION 2 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="section" id="s2">
+  <div class="section-header">
+    <div class="section-num">02</div>
+    <div class="section-title-wrap">
+      <div class="section-label">Trigger Lifecycle</div>
+      <h2>What Happens When an Import Schedule Executes</h2>
+    </div>
+  </div>
+  <div class="prose">
+    <p>
+      When a Scheduled Data Import fires (either on its configured interval or manually via "Execute Now"),
+      a precise sequence of events unfolds inside ServiceNow before any data ever leaves the SCCM database.
+    </p>
+  </div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-icon">🕐</div>
+      <div class="flow-body">
+        <div class="flow-title">Step 1 — Scheduler triggers the job</div>
+        <div class="flow-desc">ServiceNow's job scheduler fires the Scheduled Data Import record (stored in <code>sys_trigger</code>). The parent job (Computer Identity) executes first; all child jobs are queued to run only after the parent completes.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">🔄</div>
+      <div class="flow-body">
+        <div class="flow-title">Step 2 — SQL Statement is refreshed from the Instance record</div>
+        <div class="flow-desc">The job reads the <strong>Custom SQL Statement</strong> field from the corresponding record in the <code>sn_sccm_integrate_instance</code> table and <em>copies it</em> into the <code>sql_statement</code> field of the Data Source record (<code>sys_data_source</code>). This is a critical design decision: SQL is managed in the instance table, not in the data source directly.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">📋</div>
+      <div class="flow-body">
+        <div class="flow-title">Step 3 — Data Source configuration is resolved</div>
+        <div class="flow-desc">The job reads the full Data Source record: JDBC connection alias, MID Server assignment, import set table name (staging table), and the now-updated SQL statement.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">📤</div>
+      <div class="flow-body">
+        <div class="flow-title">Step 4 — ECC Queue output record is created</div>
+        <div class="flow-desc">ServiceNow creates an output record in the <code>ecc_queue</code> table addressed to the designated MID Server with topic <strong>JDBCProbe</strong>, containing the full connection and SQL payload as XML.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">🖥️</div>
+      <div class="flow-body">
+        <div class="flow-title">Step 5 — MID Server executes the query and returns results</div>
+        <div class="flow-desc">The MID Server picks up the output record, executes the SQL against the SCCM SQL Server database via JDBC, and sends results back as input records in the ECC queue.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">🗃️</div>
+      <div class="flow-body">
+        <div class="flow-title">Step 6 — Import Set Sensor populates the staging table</div>
+        <div class="flow-desc">ServiceNow processes the ECC input record XML, inserts rows into the staging (import set) table, then the Robust Transform Engine transforms the staged rows into CMDB records via IRE.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-warning">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-content">
+      <strong>Important:</strong> Never modify the SQL Statement directly on the Data Source record. Because each time the Scheduled Data Import runs, it overwrites the Data Source SQL from the <code>sn_sccm_integrate_instance</code> table. Always make SQL changes in the <strong>SCCM Instances</strong> table under the Custom SQL Statement field.
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SECTION 3 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="section" id="s3">
+  <div class="section-header">
+    <div class="section-num">03</div>
+    <div class="section-title-wrap">
+      <div class="section-label">Configuration Linkage</div>
+      <h2>How the Data Source is Linked to the Import Schedule</h2>
+    </div>
+  </div>
+  <div class="prose">
+    <p>
+      The Scheduled Data Import record and the Data Source record are <strong>explicitly linked</strong>:
+      the Scheduled Data Import record has a reference field pointing to the Data Source
+      (<span class="ic">sys_data_source</span>). The Data Source, in turn, holds the JDBC connection
+      alias, staging table name, MID Server reference, and SQL query.
+    </p>
+  </div>
+
+  <div class="kv-grid">
+    <div class="kv-card">
+      <div class="kv-key">Scheduled Data Import table</div>
+      <div class="kv-val"><code>sys_import_schedule</code></div>
+    </div>
+    <div class="kv-card">
+      <div class="kv-key">Data Source table</div>
+      <div class="kv-val"><code>sys_data_source</code></div>
+    </div>
+    <div class="kv-card">
+      <div class="kv-key">SCCM Instance config table</div>
+      <div class="kv-val"><code>sn_sccm_integrate_instance</code></div>
+    </div>
+    <div class="kv-card">
+      <div class="kv-key">Connection &amp; Credential alias</div>
+      <div class="kv-val"><code>sys_alias</code> (SCCM JDBC Connection Credentials)</div>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>
+      <strong>What kicks off the process?</strong> The <code>sys_trigger</code> scheduler fires the
+      Scheduled Data Import job at the configured interval. This job reads its linked Data Source record
+      to get the JDBC connection details and SQL statement. It then programmatically calls the
+      ServiceNow Import Set loading engine, which builds the ECC queue output record targeting
+      the MID Server defined in the Data Source.
+    </p>
+    <p>
+      For <strong>delta (incremental) imports</strong>, the SQL statement uses the
+      <code>last_run_datetime</code> field from the Data Source record as a filter parameter —
+      pulling only records modified after the last successful run.
+    </p>
+  </div>
+
+  <div class="callout callout-note">
+    <div class="callout-icon">🔗</div>
+    <div class="callout-content">
+      The <strong>Connection Name</strong> you set during Guided Setup (e.g., "USA") becomes a prefix
+      for all created Data Sources and Scheduled Imports (e.g., <em>USA-SG-SCCM Computer Identity</em>).
+      This naming allows multi-instance SCCM setups — each SCCM environment gets its own isolated set
+      of data sources and import schedules under a child Connection &amp; Credential alias.
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SECTION 4 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="section" id="s4">
+  <div class="section-header">
+    <div class="section-num">04</div>
+    <div class="section-title-wrap">
+      <div class="section-label">ECC Queue</div>
+      <h2>How an Output Record is Created in the ECC Queue</h2>
+    </div>
+  </div>
+  <div class="prose">
+    <p>
+      The <strong>ECC (External Communication Channel) Queue</strong> (<span class="ic">ecc_queue</span>)
+      is the central message bus between the ServiceNow instance and MID Servers. It holds two types
+      of records: <em>output records</em> (instructions from SN to MID) and <em>input records</em>
+      (responses from MID to SN).
+    </p>
+    <p>
+      When the Import Set loading engine resolves a JDBC-type Data Source, it creates an <strong>output record</strong>
+      in the <code>ecc_queue</code> table with the following key fields:
+    </p>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>ECC Queue Field</th><th>Value Set</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>agent</code></td><td><strong>mid.server.&lt;MID_Name&gt;</strong></td><td>Identifies which MID Server should process this record</td></tr>
+      <tr><td><code>topic</code></td><td><strong>JDBCProbe</strong></td><td>Tells the MID Server which Java probe handler to invoke</td></tr>
+      <tr><td><code>queue</code></td><td><strong>output</strong></td><td>Marks this as a command going TO the MID Server</td></tr>
+      <tr><td><code>state</code></td><td><strong>ready</strong></td><td>Signals the MID Server this record is ready for pickup</td></tr>
+      <tr><td><code>payload</code></td><td>XML with JDBC details + SQL</td><td>Contains the full instruction set for the JDBC probe</td></tr>
+      <tr><td><code>agent_correlator</code></td><td>Sys_id of the data source job</td><td>Used to trace output back to the originating feature/job</td></tr>
+      <tr><td><code>name</code></td><td>Descriptive label</td><td>Human-readable identifier for the probe</td></tr>
+    </tbody>
+  </table>
+
+  <div class="prose"><p>The XML payload inside the ECC queue output record looks structurally like this:</p></div>
+
+  <div class="code-block">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <div class="code-lang">XML — ECC Queue Output Payload (JDBCProbe)</div>
+    </div>
+    <pre><span class="tag">&lt;parameters&gt;</span>
+  <span class="tag">&lt;parameter</span> <span class="attr">name</span>=<span class="val">"driver"</span>
+    <span class="attr">value</span>=<span class="val">"com.microsoft.sqlserver.jdbc.SQLServerDriver"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;parameter</span> <span class="attr">name</span>=<span class="val">"driver_jar"</span>
+    <span class="attr">value</span>=<span class="val">"mssql-jdbc.jar"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;parameter</span> <span class="attr">name</span>=<span class="val">"url"</span>
+    <span class="attr">value</span>=<span class="val">"jdbc:sqlserver://&lt;sccm_host&gt;;databaseName=CM_&lt;SiteCode&gt;"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;parameter</span> <span class="attr">name</span>=<span class="val">"query"</span> <span class="attr">value</span>=<span class="val">"Specific SQL"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;parameter</span> <span class="attr">name</span>=<span class="val">"sql_statement"</span>
+    <span class="attr">value</span>=<span class="val">"SELECT v_R_System.ResourceID, v_R_System.Name0,
+      v_GS_COMPUTER_SYSTEM.Manufacturer00, v_GS_COMPUTER_SYSTEM.Model00,
+      v_GS_PC_BIOS.SerialNumber00, WorkstationStatus_DATA.LastHWScan
+      FROM v_R_System
+      JOIN v_GS_COMPUTER_SYSTEM ON ...
+      WHERE WorkstationStatus_DATA.LastHWScan &gt; @lastrun"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;parameter</span> <span class="attr">name</span>=<span class="val">"target_table"</span>
+    <span class="attr">value</span>=<span class="val">"sn_sccm_integrate_sccm_2019_computer_id"</span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/parameters&gt;</span></pre>
+  </div>
+
+  <div class="callout callout-tip">
+    <div class="callout-icon">💡</div>
+    <div class="callout-content">
+      <strong>AMB Notification:</strong> The moment the output record is inserted into <code>ecc_queue</code>,
+      an <strong>Asynchronous Message Bus (AMB)</strong> message is immediately pushed to the MID Server's
+      subscribed channel. This means the MID Server is notified in real-time rather than relying solely on polling.
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SECTION 5 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="section" id="s5">
+  <div class="section-header">
+    <div class="section-num">05</div>
+    <div class="section-title-wrap">
+      <div class="section-label">MID Server Internals</div>
+      <h2>How the MID Server Picks Up the Output Record</h2>
+    </div>
+  </div>
+  <div class="prose">
+    <p>
+      The MID Server is a Java application running on a server within the corporate network, maintaining
+      an outbound HTTPS connection to the ServiceNow instance. It operates on a
+      <strong>receive-then-poll</strong> model using AMB for near-real-time notification.
+    </p>
+  </div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-icon">📡</div>
+      <div class="flow-body">
+        <div class="flow-title">AMB Notification Received</div>
+        <div class="flow-desc">Upon the ECC output record insert, ServiceNow pushes an AMB message to the MID Server's channel. The MID Server receives this and immediately initiates a poll of the <code>ecc_queue</code> table for output records assigned to it in <strong>ready</strong> state.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">📋</div>
+      <div class="flow-body">
+        <div class="flow-title">Poll for Ready Output Records</div>
+        <div class="flow-desc">The MID Server queries: records where <code>agent = 'mid.server.&lt;name&gt;'</code>, <code>queue = 'output'</code>, <code>state = 'ready'</code>. Records are fetched <strong>oldest first, highest priority first</strong>. Only a certain number are fetched at once, proportional to the MID Server's configured thread count. On startup, it also re-fetches records in <em>processing</em> state (assuming previous death mid-execution).</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">📢</div>
+      <div class="flow-body">
+        <div class="flow-title">Notify the Instance — "Queue Processing"</div>
+        <div class="flow-desc">The MID Server writes a <code>topic=queue.processing</code> record back to the instance, signalling that it has acknowledged the job. The output record state transitions from <strong>ready</strong> → <strong>processing</strong>.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">🧵</div>
+      <div class="flow-body">
+        <div class="flow-title">Internal Worker Thread Queue</div>
+        <div class="flow-desc">The accepted record is placed into the MID Server's <strong>internal in-memory queue</strong>. A free Worker Thread from the thread pool picks it up. The thread pool used (High, Low, etc.) depends on the record's priority. An output record in "processing" state does NOT necessarily mean it's actively running — it may still be waiting for a free thread.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">🔌</div>
+      <div class="flow-body">
+        <div class="flow-title">JDBCProbe Java Code Invoked</div>
+        <div class="flow-desc">The Worker Thread passes the work to the Java probe class registered for the <strong>JDBCProbe</strong> topic. This class parses the XML payload from the ECC record and executes the JDBC query. Agent log entries contain the sys_id of the ECC output record for traceability.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SECTION 6 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="section" id="s6">
+  <div class="section-header">
+    <div class="section-num">06</div>
+    <div class="section-title-wrap">
+      <div class="section-label">JDBC Execution</div>
+      <h2>How SQL Statements are Executed on the MID Server</h2>
+    </div>
+  </div>
+  <div class="prose">
+    <p>
+      The MID Server's JDBCProbe Java class handles all the mechanics of connecting to the external
+      SQL Server and executing the query. Here's the precise sequence:
+    </p>
+  </div>
+
+  <ul class="step-list">
+    <li>
+      <div class="step-bullet">1</div>
+      <div><strong style="color:var(--text-primary)">Parse XML Payload:</strong> The JDBCProbe class extracts the JDBC driver class name, driver JAR path, connection URL (with host, port, database name), credentials, query type, and the SQL statement string from the ECC queue payload XML.</div>
+    </li>
+    <li>
+      <div class="step-bullet">2</div>
+      <div><strong style="color:var(--text-primary)">Load JDBC Driver:</strong> The MID Server dynamically loads the SQL Server JDBC driver (<span class="ic">com.microsoft.sqlserver.jdbc.SQLServerDriver</span>) from its local JAR repository. Windows Integrated Authentication (NTLM/Kerberos) or SQL auth is used based on configuration.</div>
+    </li>
+    <li>
+      <div class="step-bullet">3</div>
+      <div><strong style="color:var(--text-primary)">Establish JDBC Connection:</strong> A <code>DriverManager.getConnection(url, user, password)</code> call opens a JDBC connection from the MID Server host to the SCCM SQL Server. Since the MID Server is a Windows machine on the same domain, it can use Integrated (Windows) Authentication without a username/password if configured.</div>
+    </li>
+    <li>
+      <div class="step-bullet">4</div>
+      <div><strong style="color:var(--text-primary)">Prepare and Execute SQL:</strong> A JDBC <code>Statement</code> or <code>PreparedStatement</code> is created and the SQL query is executed via <code>executeQuery()</code>. The SQL Server account used must have the <code>db_datareader</code> role on the SCCM database.</div>
+    </li>
+    <li>
+      <div class="step-bullet">5</div>
+      <div><strong style="color:var(--text-primary)">Iterate ResultSet:</strong> The returned <code>ResultSet</code> is iterated row by row. The MID Server buffers rows into chunks based on the configured result set size (controlled by <span class="ic">jdbcprobe_result_set_rows</span>, default varies).</div>
+    </li>
+    <li>
+      <div class="step-bullet">6</div>
+      <div><strong style="color:var(--text-primary)">Format as XML:</strong> Each chunk of rows is serialized into an XML document where column names become element names and row values become element content.</div>
+    </li>
+    <li>
+      <div class="step-bullet">7</div>
+      <div><strong style="color:var(--text-primary)">Close Resources:</strong> The ResultSet, Statement, and Connection are closed. The MID Server logs the completion with probe time and result row count.</div>
+    </li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+      <div class="code-lang">XML — ECC Input Payload (JDBC Result from MID)</div>
+    </div>
+    <pre><span class="tag">&lt;results</span> <span class="attr">probe_time</span>=<span class="val">"4832"</span> <span class="attr">result_code</span>=<span class="val">"0"</span><span class="tag">&gt;</span>
+  <span class="tag">&lt;result&gt;</span>
+    <span class="tag">&lt;row</span> <span class="attr">num</span>=<span class="val">"1"</span><span class="tag">&gt;</span>
+      <span class="tag">&lt;ResourceID&gt;</span>16777217<span class="tag">&lt;/ResourceID&gt;</span>
+      <span class="tag">&lt;Name0&gt;</span>WORKSTATION-01<span class="tag">&lt;/Name0&gt;</span>
+      <span class="tag">&lt;Manufacturer00&gt;</span>Dell Inc.<span class="tag">&lt;/Manufacturer00&gt;</span>
+      <span class="tag">&lt;Model00&gt;</span>Latitude 5520<span class="tag">&lt;/Model00&gt;</span>
+      <span class="tag">&lt;SerialNumber00&gt;</span>ABC1234XYZ<span class="tag">&lt;/SerialNumber00&gt;</span>
+      <span class="tag">&lt;LastHWScan&gt;</span>2025-06-07 03:12:44.000<span class="tag">&lt;/LastHWScan&gt;</span>
+    <span class="tag">&lt;/row&gt;</span>
+    <span class="tag">&lt;row</span> <span class="attr">num</span>=<span class="val">"2"</span><span class="tag">&gt;</span> <span class="cm">... next row ...</span> <span class="tag">&lt;/row&gt;</span>
+  <span class="tag">&lt;/result&gt;</span>
+  <span class="tag">&lt;parameters&gt;</span>
+    <span class="tag">&lt;parameter</span> <span class="attr">name</span>=<span class="val">"agent"</span> <span class="attr">value</span>=<span class="val">"mid.server.WIN-SCCM-MID"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;/parameters&gt;</span>
+<span class="tag">&lt;/results&gt;</span></pre>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SECTION 7 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="section" id="s7">
+  <div class="section-header">
+    <div class="section-num">07</div>
+    <div class="section-title-wrap">
+      <div class="section-label">Batching Strategy</div>
+      <h2>Single SQL Execution vs. Batch Record Processing</h2>
+    </div>
+  </div>
+
+  <div class="callout callout-tip">
+    <div class="callout-icon">✅</div>
+    <div class="callout-content">
+      <strong>The SQL statement is executed ONCE as a single query.</strong> The MID Server does not re-execute the SQL per batch. Instead, it iterates the returned ResultSet and divides the results into multiple chunks — each chunk becomes a separate ECC queue input record sent back to ServiceNow.
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>
+      Here is how batching works at each layer of the pipeline:
+    </p>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Layer</th><th>Mechanism</th><th>Default / Config</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>JDBC ResultSet chunking</strong><br><small>(MID Server)</small></td>
+        <td>The MID Server reads the JDBC ResultSet and groups rows into payload chunks before sending each chunk as a separate ECC input record. Controlled by the <code>jdbcprobe_result_set_rows</code> field on the Data Source record.</td>
+        <td><span class="chip chip-orange">200 rows/chunk default</span></td>
+      </tr>
+      <tr>
+        <td><strong>ECC payload size limit</strong><br><small>(MID Server → SN)</small></td>
+        <td>Each ECC input record payload must stay under the max payload size. If a chunk is too large, the row count per chunk must be reduced. Controlled by system property <code>mid.eccq.max_payload_size</code>.</td>
+        <td><span class="chip chip-yellow">Configurable</span></td>
+      </tr>
+      <tr>
+        <td><strong>Import Set batch processing</strong><br><small>(ServiceNow)</small></td>
+        <td>When ServiceNow processes the staging table rows, it uses batch transactions. <code>glide.import_set_load_usebatch</code> and <code>glide.import_set_load_batch_size</code> control how many rows are committed per transaction. A single Import Set record is created, but internally data is committed in batches.</td>
+        <td><span class="chip chip-blue">1000 rows/batch default</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">📊</div>
+    <div class="callout-content">
+      The commonly referenced <strong>"1500 records"</strong> batch size is not a hard-coded OOTB default in the core platform — it may refer to a custom configuration set in specific environments. The platform defaults are <strong>200 rows per JDBC result chunk</strong> and <strong>1000 rows per import set batch transaction</strong>. Both can be tuned for your dataset size.
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SECTION 8 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="section" id="s8">
+  <div class="section-header">
+    <div class="section-num">08</div>
+    <div class="section-title-wrap">
+      <div class="section-label">MID Server Storage</div>
+      <h2>Where Output is Stored on the MID Server</h2>
+    </div>
+  </div>
+  <div class="prose">
+    <p>
+      After the JDBCProbe executes the SQL and serializes the results into XML, the MID Server does
+      not hold the data in memory and immediately fire it to ServiceNow in a single step. Instead, it
+      uses a local disk-based queue to manage sending reliability and ordering.
+    </p>
+  </div>
+
+  <div class="arch-grid">
+    <div class="arch-card">
+      <div class="arch-card-icon">📁</div>
+      <div class="arch-card-title">ECC Sender Folder</div>
+      <div class="arch-card-desc">Result XML files are written to the MID Server's local <strong>ECC Sender queue directory</strong> on disk (typically within the agent's work directory). Files are named using the ECC output record's sys_id.</div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-card-icon">📬</div>
+      <div class="arch-card-title">ECCSender Component</div>
+      <div class="arch-card-desc">The <strong>ECCSender</strong> monitor on the MID Server reads XML files from the local queue folder and sends them to ServiceNow in <strong>priority order</strong>, serially (not in parallel). This serialized sending is why latency increases when many probes pile up.</div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-card-icon">🔒</div>
+      <div class="arch-card-title">Durability</div>
+      <div class="arch-card-desc">Because results are persisted on disk before sending, the MID Server can survive a transient network outage and resume sending when connectivity is restored.</div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-card-icon">🗂️</div>
+      <div class="arch-card-title">Multiple Chunks</div>
+      <div class="arch-card-desc">If a query returns 10,000 rows at 200 rows/chunk, the MID Server creates ~50 separate XML files in the local queue, each destined to become one ECC input record in ServiceNow.</div>
+    </div>
+  </div>
+
+  <div class="callout callout-note">
+    <div class="callout-icon">🔍</div>
+    <div class="callout-content">
+      <strong>Tracing in agent logs:</strong> Every MID Server log entry related to a probe contains the
+      <strong>sys_id of the ECC output record</strong>. You can search <code>logs/agent0.log.*</code>
+      for the ECC output sys_id to find all traffic (pickup time, execution time, send time) for a given probe run.
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SECTION 9 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="section" id="s9">
+  <div class="section-header">
+    <div class="section-num">09</div>
+    <div class="section-title-wrap">
+      <div class="section-label">Return Path</div>
+      <h2>How Results are Sent Back to ECC Queue as Input Records</h2>
+    </div>
+  </div>
+  <div class="prose">
+    <p>
+      The ECCSender component on the MID Server sends each XML result file to ServiceNow, inserting
+      it as an <strong>input record</strong> in the <code>ecc_queue</code> table. This is the return path.
+    </p>
+  </div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-icon">📂</div>
+      <div class="flow-body">
+        <div class="flow-title">ECCSender reads local XML files</div>
+        <div class="flow-desc">ECCSender scans the local ECC queue folder in priority order and picks up the result XML files written by the JDBCProbe worker thread.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">📤</div>
+      <div class="flow-body">
+        <div class="flow-title">Insert ECC Input Record</div>
+        <div class="flow-desc">For each XML file, ECCSender inserts an <strong>input record</strong> into the <code>ecc_queue</code> table on the ServiceNow instance. Key fields: <code>queue=input</code>, <code>state=ready</code>, <code>topic=JDBCProbe</code>, <code>name</code> matches the original output record name. The payload contains the XML result rows.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">✅</div>
+      <div class="flow-body">
+        <div class="flow-title">Output Record Marked "Processed"</div>
+        <div class="flow-desc">When ServiceNow receives the input and sees the matching output record, a Business Rule updates the original output record state to <strong>processed</strong> and records the "Processed" timestamp.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">⏰</div>
+      <div class="flow-body">
+        <div class="flow-title">Sensor Job Scheduled (sys_trigger)</div>
+        <div class="flow-desc">The arrival of the ECC input record triggers scheduling of an <strong>asynchronous sensor job</strong> (<code>sys_trigger</code>). This sensor job will process the XML payload and populate the staging table. Multiple input records (one per chunk) each create their own sensor job execution.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">⏱️</div>
+    <div class="callout-content">
+      <strong>Timing Anatomy:</strong>
+      <ul style="margin-top:8px; padding-left:16px;">
+        <li><strong>Enqueued →</strong> Output record inserted, state = ready</li>
+        <li><strong>Processed time →</strong> State changes to "processing" (MID picked it up; note: confusingly named)</li>
+        <li><strong>Updated time →</strong> Input record received back; state = processed (actual completion)</li>
+      </ul>
+      <br>Long gaps between "processed" and "updated" indicate MID Server is busy processing other probes or experiencing network latency sending results back.
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SECTION 10 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="section" id="s10">
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <div class="section-title-wrap">
+      <div class="section-label">Staging Layer</div>
+      <h2>How ServiceNow Processes ECC Input and Populates the Staging Table</h2>
+    </div>
+  </div>
+  <div class="prose">
+    <p>
+      When the sensor job fires, it processes the XML payload from the ECC input record and writes
+      the data into the <strong>Import Set staging table</strong> — a temporary table that extends
+      <span class="ic">sys_import_set_row</span>. Each SG-SCCM data source has its own dedicated
+      staging table (e.g., <span class="ic">u_imp_sccm_computer_identity</span>).
+    </p>
+  </div>
+
+  <ul class="step-list">
+    <li>
+      <div class="step-bullet">1</div>
+      <div><strong style="color:var(--text-primary)">ECC Input Sensor fires:</strong> The asynchronous sensor job reads the ECC input record payload (XML with JDBC result rows).</div>
+    </li>
+    <li>
+      <div class="step-bullet">2</div>
+      <div><strong style="color:var(--text-primary)">XML Parsed row-by-row:</strong> Each <code>&lt;row&gt;</code> element in the XML is parsed. Column names map to staging table field names. Values are extracted and typed appropriately.</div>
+    </li>
+    <li>
+      <div class="step-bullet">3</div>
+      <div><strong style="color:var(--text-primary)">Rows inserted into staging table:</strong> Each parsed row is inserted as a new record in the Import Set staging table. The record's <code>sys_import_set</code> field links it to the current Import Set run. Initial state: <strong>Pending</strong>.</div>
+    </li>
+    <li>
+      <div class="step-bullet">4</div>
+      <div><strong style="color:var(--text-primary)">Multiple ECC inputs = multiple sensor runs:</strong> Because large result sets produce multiple ECC input chunks, multiple sensor job executions run (potentially in parallel). All write to the same Import Set staging table run.</div>
+    </li>
+    <li>
+      <div class="step-bullet">5</div>
+      <div><strong style="color:var(--text-primary)">Import Set record state tracks progress:</strong> The <code>sys_import_set</code> record transitions: Loading → Loaded (once all rows are in). Then transformation begins.</div>
+    </li>
+    <li>
+      <div class="step-bullet">6</div>
+      <div><strong style="color:var(--text-primary)">Pre-import script runs (optional):</strong> If a pre-import script is configured on the Data Source, it runs once data is successfully loaded into the staging table (best practice: use <code>onStart</code> hook).</div>
+    </li>
+  </ul>
+
+  <div class="callout callout-tip">
+    <div class="callout-icon">🗄️</div>
+    <div class="callout-content">
+      <strong>Staging Table Housekeeping:</strong> ServiceNow automatically purges Import Set staging table rows older than <strong>7 days</strong> via the "Import Set Deleter" scheduled job. This keeps staging tables from growing unbounded. Only the most recent import run's data is needed for transformation.
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SECTION 11 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="section" id="s11">
+  <div class="section-header">
+    <div class="section-num">11</div>
+    <div class="section-title-wrap">
+      <div class="section-label">Transform Engine</div>
+      <h2>How RTE and ETL Come Into the Picture</h2>
+    </div>
+  </div>
+  <div class="prose">
+    <p>
+      Once all rows are loaded into the staging table, the transformation phase begins.
+      SG-SCCM uses <strong>Robust Import Set Transformers</strong> — not legacy Transform Maps — for
+      all its core import jobs (the exception being software usage and edition jobs, which still use
+      classic Transform Maps).
+    </p>
+    <p>
+      Each active SG-SCCM Scheduled Import has a corresponding <strong>Robust Import Set Transformer</strong>
+      record in the <span class="ic">sys_robust_import_set_transformer_list</span> table. This record
+      creates a one-to-one mapping between the staging table and the <strong>Transformer Definition</strong>
+      (ETL Definition) that governs the transformation logic.
+    </p>
+  </div>
+
+  <div class="arch-grid">
+    <div class="arch-card">
+      <div class="arch-card-icon">🔀</div>
+      <div class="arch-card-title">Robust Transform Engine (RTE)</div>
+      <div class="arch-card-desc">Orchestrates transformation of raw staging rows into structured IRE payloads. Uses ETL definitions authored in IntegrationHub ETL.</div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-card-icon">🏗️</div>
+      <div class="arch-card-title">IntegrationHub ETL</div>
+      <div class="arch-card-desc">The UI and metadata layer. Defines <strong>Entities</strong>, <strong>Mappings</strong>, <strong>Operations</strong>, and <strong>Conditional Scripts</strong> that RTE executes.</div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-card-icon">🧹</div>
+      <div class="arch-card-title">Cleanse Transforms</div>
+      <div class="arch-card-desc">Scripts like <code>CleansModelAndCompany</code> normalize manufacturer and model names by looking them up in the Hardware Model table, returning a <code>model_id</code>.</div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-card-icon">🔍</div>
+      <div class="arch-card-title">Lookup Operations</div>
+      <div class="arch-card-desc">Resolve reference fields: e.g., map the SCCM <code>LastHWScan</code> value to the CI's <code>last_discovered</code> field, or map a username to a <code>sys_user</code> sys_id.</div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-icon">📊</div>
+      <div class="flow-body">
+        <div class="flow-title">RTE reads Staging Table Rows</div>
+        <div class="flow-desc">RTE iterates through rows in the staging table with state = <strong>Pending</strong>. For each row, it loads the matching ETL/Transformer Definition.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">⚙️</div>
+      <div class="flow-body">
+        <div class="flow-title">ETL Transforms Applied Per Row</div>
+        <div class="flow-desc">For each staging row, ETL operations are applied in order: field extraction, data cleansing (normalizing manufacturer/model), lookup (resolving user/IP references), conditional logic (e.g., classifying as Computer vs. Windows Server based on system role), and field mapping to target CI class fields.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">📦</div>
+      <div class="flow-body">
+        <div class="flow-title">IRE Payload Assembled</div>
+        <div class="flow-desc">RTE assembles a structured <strong>IRE payload</strong> for each row. This payload includes the CI class, all attribute key-value pairs, the discovery source (SG-SCCM), and any related item payloads (e.g., serial number records, IP addresses for network import).</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">🏷️</div>
+      <div class="flow-body">
+        <div class="flow-title">Staging Row Marked "Processed"</div>
+        <div class="flow-desc">After a staging row's IRE payload is successfully submitted, its state is updated to <strong>Processed</strong> in the import set table. Failed rows are marked <strong>Error</strong> with a message.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SECTION 12 -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="section" id="s12">
+  <div class="section-header">
+    <div class="section-num">12</div>
+    <div class="section-title-wrap">
+      <div class="section-label">CMDB Ingestion</div>
+      <h2>How ETL Generates the IRE Payload and Passes It to IRE</h2>
+    </div>
+  </div>
+  <div class="prose">
+    <p>
+      The <strong>Identification and Reconciliation Engine (IRE)</strong> is the gatekeeper of the CMDB.
+      Rather than writing directly to CMDB tables, all SG-SCCM data passes through IRE — ensuring
+      deduplication, reconciliation between multiple discovery sources, and CMDB health.
+    </p>
+  </div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-icon">📦</div>
+      <div class="flow-body">
+        <div class="flow-title">IRE Payload Structure</div>
+        <div class="flow-desc">The ETL-generated IRE payload is a structured JSON/object containing: <strong>CI class</strong> (e.g., <code>cmdb_ci_win_server</code>), <strong>attribute map</strong> (field name → value pairs), <strong>discovery source</strong> (<code>SG-SCCM</code>), and <strong>lookup fields</strong> (the identification attributes like serial number, resource ID). Related items (serial numbers, IPs) are nested sub-payloads.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">🔍</div>
+      <div class="flow-body">
+        <div class="flow-title">IRE — Identification Phase</div>
+        <div class="flow-desc">IRE applies <strong>Identification Rules</strong> configured for the CI class. For Computer CIs, it checks attributes like hostname, serial number, and SCCM ResourceID against existing CMDB records to determine if a match exists. IRE uses a ranked list of identification rules — if a high-confidence rule matches (e.g., serial number match), it uses that CI. If no match, a new CI is created.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">⚖️</div>
+      <div class="flow-body">
+        <div class="flow-title">IRE — Reconciliation Phase</div>
+        <div class="flow-desc">If a matching CI is found, IRE applies <strong>Reconciliation Rules</strong>. These rules define which discovery source has higher priority for each field. If SG-SCCM is set to lower priority than ServiceNow ITOM Discovery for a given field, IRE will reject SG-SCCM's proposed value and preserve the higher-priority source's value. Rejected values are visible in CMDB 360 as "Proposed Values".</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">🗄️</div>
+      <div class="flow-body">
+        <div class="flow-title">CMDB Tables Updated</div>
+        <div class="flow-desc">After identification and reconciliation, IRE performs the actual database writes: <strong>INSERT</strong> for new CIs or <strong>UPDATE</strong> for existing ones, directly into the target CMDB table. Related items (disks, NICs, serial numbers, IP addresses) are also upserted into their respective tables and linked via relationship records.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">🔄</div>
+      <div class="flow-body">
+        <div class="flow-title">Partial Payloads (Edge Case)</div>
+        <div class="flow-desc">If IRE cannot fully process a payload due to a missing referenced CI (e.g., a software install record references a computer CI that hasn't been created yet), the payload is stored in the <strong>CMDB IRE Partial Payloads</strong> table for retry processing once the dependency is resolved.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-icon">🛡️</div>
+      <div class="flow-body">
+        <div class="flow-title">IRE Data Source Rules (Optional)</div>
+        <div class="flow-desc">Administrators can configure <strong>IRE Data Source Rules</strong> to restrict what SG-SCCM can do: e.g., "Insert Not Allowed" prevents SG-SCCM from creating new Computer CIs (only update existing ones found by Discovery). This prevents unwanted CI creation from SCCM-only devices.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-tip">
+    <div class="callout-icon">🌐</div>
+    <div class="callout-content">
+      <strong>CMDB 360 / Multisource CMDB:</strong> Enabling <code>glide.identification_engine.multisource_enabled = true</code> unlocks visibility into multi-source reconciliation. Administrators can see which discovery source "won" each field, view proposed values from lower-priority sources, and understand exactly why a field was or wasn't updated by SG-SCCM.
+    </div>
+  </div>
+
+  <div class="prose" style="margin-top:28px;">
+    <p>
+      <strong>Summary of the complete data journey:</strong> A device in SCCM's SQL Server database —
+      discovered by Active Directory Forest Discovery — travels through a Scheduled Data Import trigger,
+      through a JDBC connection on the MID Server, through the ECC Queue as output and input records,
+      into a staging table via an import set sensor, through RTE/ETL transformation and cleansing,
+      through IRE identification and reconciliation, and finally lands as a
+      <span class="ic">cmdb_ci_win_server</span> or <span class="ic">cmdb_ci_computer</span> record
+      in the ServiceNow CMDB — with serial numbers, network adapters, IPs, disk drives, and
+      software installations all linked as related records.
+    </p>
+  </div>
+</section>
+
+</main>
+</div>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer" style="max-width:1400px; margin:0 auto;">
+  <div class="footer-text">
+    SG-SCCM Architecture Reference · Based on ServiceNow Community documentation, KB articles, and platform internals
+  </div>
+  <div class="footer-status">
+    <div class="dot"></div>
+    Pending your validation — v1 draft
+  </div>
+</footer>
+
+</body>
+</html>
